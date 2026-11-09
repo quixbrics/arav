@@ -10,6 +10,7 @@ import { $, $$, on, clamp, uid, toast, esc, fmtTime, countLE, sampleAt } from '.
 import { renderMedia, renderChips, updateChips, renderStack, setActions, renderScenes, updateLiveScene, updateStackLive } from './ui/panels.js';
 import { renderInspector, renderShape, syncShape, updateKnobs, drawShapePlots, hooks, updateSceneBadge } from './ui/inspector.js';
 import { initTimeline, drawTimeline, updatePlayhead, setZoom, TL, sectionName, sectionColor, snapT } from './ui/timeline.js';
+import { togglePopout, popoutFrame, onPopoutChange } from './popout.js';
 import { capture, recall, updateScene, deleteScene, addCue, following, sceneOnMix, activeScene, takeManual, manual, bakeLive, invalidateBlend, SCENE_COLS } from './scenes.js';
 import { applyRecipe, saveUserRecipe } from './presets.js';
 import { openLibrary, openExport, openHelp, closeModals, menu } from './ui/modals.js';
@@ -72,6 +73,8 @@ function fitScreen() {
   const s = $('#screen'); s.style.width = Math.max(10, w) + 'px'; s.style.height = Math.max(10, h) + 'px';
 }
 new ResizeObserver(fitScreen).observe($('#stage'));
+onPopoutChange((open, why) => { $('#bPop').classList.toggle('on', open); $('#bPop').textContent = open ? '⧉ CLOSE OUTPUT' : '⧉ POP OUT'; if (why === 'blocked') toast('The browser blocked the pop-out window. Allow pop-ups for this site and try again.', 5000); else if (open) toast('Output window open. Drag it to the projector or second screen, then double-click it (or press <b>F</b> in it) for full screen.', 5000); });
+$('#bPop').onclick = () => togglePopout();
 $('#bFull').onclick = () => { const s = $('#screen'); if (document.fullscreenElement) document.exitFullscreen(); else s.requestFullscreen?.(); };
 const abStyle = document.createElement('style'); abStyle.textContent = '.screen:fullscreen canvas{object-fit:contain}'; document.head.appendChild(abStyle);
 $('#bAB').onclick = () => { RT.abSplit = RT.abSplit ? 0 : 0.5; $('#bAB').classList.toggle('on', !!RT.abSplit); $('#screen').classList.toggle('ab', !!RT.abSplit); };
@@ -412,6 +415,7 @@ addEventListener('keydown', e => {
   else if (e.key >= '1' && e.key <= '6') setStage(STAGES[+e.key - 1][0]);
   else if (e.key === 'g' || e.key === 'G') setGuide(!RT.guide);
   else if (e.key === 'f' || e.key === 'F') $('#bFull').click();
+  else if ((e.key === 'p' || e.key === 'P') && !e.metaKey && !e.ctrlKey) $('#bPop').click();
   else if (e.key === '?') openHelp();
   else if (e.key === 'Escape') { closeModals(); if (RT.recording) stopRecording(); if (RT.rendering) cancelRender = true; }
 });
@@ -479,6 +483,7 @@ function frame(now) {
   const a = fr.ana;
   const t0 = performance.now();
   engine.render(fr);
+  popoutFrame(view);
   msAvg += (performance.now() - t0 - msAvg) * 0.1;
   afterRenderML(fr); tickPhase4();
   if (RT.fullOnce) { const fn = RT.fullOnce; RT.fullOnce = null; fn(); }

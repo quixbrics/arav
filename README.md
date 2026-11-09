@@ -15,7 +15,7 @@ It runs entirely in the browser: no install, no server, no build step. Use **Chr
 | **⑤ Shape** | Per-mapping response: Continuous / Trigger / Gate, curve, attack, release, range, threshold, invert. A live in/out scope shows the result. **Automation lanes** on the timeline draw long arcs (right-click a knob → *Automate*). |
 | **⑥ Export** | **Frame-accurate MP4 render** (H.264 + AAC via WebCodecs; every frame rendered exactly, never drops frames), real-time recording with audio (WebM, or MP4 on Safari), full-resolution PNG stills, analysis data as **JSON / CSV** (for TouchDesigner, Unreal, AE, Blender), a markers CSV, and project save/load (`.arav.json`). |
 
-Output formats: 16:9 (720p, 1080p, 4K), 9:16, 1:1, **360° equirectangular** (effects wrap across the seam, and **◎ LOOK** previews the sphere from inside), and **dome master**. **4-channel AmbiX** files are recognised: you hear a stereo fold-down, and the **AZIM / ELEV** signals follow where the sound is coming from. There is also an A|B before/after split, fullscreen output, undo/redo, and a project that saves itself automatically.
+Output formats: 16:9 (720p, 1080p, 4K), 9:16, 1:1, **360° equirectangular** (effects wrap across the seam, and **◎ LOOK** previews the sphere from inside), and **dome master**. **4-channel AmbiX** files are recognised: you hear a stereo fold-down, and the **AZIM / ELEV** signals follow where the sound is coming from. There is also an A|B before/after split, fullscreen output, a **⧉ POP OUT** output window for a projector or second screen (full screen there while you keep editing), undo/redo, and a project that saves itself automatically.
 
 ## Running it locally
 

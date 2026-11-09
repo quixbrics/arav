@@ -136,7 +136,8 @@ export function openHelp() {
   <p><b>NOISE</b>: spectral flatness (hiss and cymbals vs. notes). <b>ONSET</b>: a 1-frame spike at each new hit. <b>BEAT φ</b>: a 0→1 ramp every beat. <b>PAN</b>: stereo balance. <b>CHROMA</b>: harmony as a hue wheel. <b>SECTION</b>: steps through song sections.</p>
   <h4>SHORTCUTS</h4>
   <p><kbd>Space</kbd> play / pause · <kbd>Home</kbd> to start · <kbd>←</kbd><kbd>→</kbd> one beat (<kbd>⇧</kbd> one bar)</p>
-  <p><kbd>1</kbd>–<kbd>6</kbd> steps · <kbd>G</kbd> guide · <kbd>F</kbd> fullscreen · <kbd>⌘/Ctrl Z</kbd> undo</p>
+  <p><kbd>1</kbd>–<kbd>6</kbd> steps · <kbd>G</kbd> guide · <kbd>F</kbd> fullscreen · <kbd>P</kbd> pop out · <kbd>⌘/Ctrl Z</kbd> undo</p>
+  <p><b>⧉ POP OUT</b> opens the output in its own window for a projector or second screen (on its own screen automatically in Chrome/Edge, once you allow it). Double-click it, or press <kbd>F</kbd> in it, for full screen; keep editing in this window. It mirrors the preview exactly, so set the preview to FULL resolution and switch off A | B for a show.</p>
   <p>Knob: drag = value · <kbd>⇧</kbd> drag = depth · double-click = reset · right-click = automate / unmap</p>
   <p>Timeline: click = seek · <kbd>⌘/Ctrl</kbd> + wheel = zoom · <kbd>⇧</kbd> + wheel = scroll · double-click a section to rename it</p>
   <p>Scenes: <kbd>⇧1</kbd>–<kbd>⇧9</kbd> recall a scene · right-click a section = cue a scene · <kbd>⌥</kbd>-click a cue = delete</p>
