@@ -1,0 +1,877 @@
+<!doctype html>
+<!--
+  ARAV — UI MOCKUP (not the app)
+  Everything here is simulated: the "audio" is a synthetic 124 BPM track with
+  sections, and the viewer is a Canvas2D sketch standing in for the WebGL engine.
+  The point is to test layout, workflow and the drag-to-map interaction.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARAV Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07080a; --panel:#0e1013; --panel2:#13161a; --panel3:#191d22; --line:#23272e; --line2:#2e333b;
+  --txt:#d9dce1; --dim:#7a818c; --dimmer:#4b515a; --accent:#ff7a3d; --ok:#7dffa8; --rec:#ff3b4a;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace; --sans:'Space Grotesk',system-ui,sans-serif;
+  --left:272px; --right:356px; --tl:278px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font:12px/1.35 var(--sans);overflow:hidden;
+  display:grid;grid-template-columns:var(--left) 1fr var(--right);grid-template-rows:54px 32px 1fr var(--tl);
+  grid-template-areas:"top top top" "coach coach coach" "left view right" "left time right"}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+h3{font:600 10px/1 var(--mono);letter-spacing:.2em;color:var(--dim);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mono{font-family:var(--mono)}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+
+/* ---------- TOP ---------- */
+.top{grid-area:top;display:flex;align-items:center;gap:18px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:240px}
+.logo{font:700 20px/1 var(--sans);letter-spacing:.14em;background:linear-gradient(90deg,#ff7a3d,#ff3d71 40%,#b98cff 70%,#3de0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand .sub{font:500 9px var(--mono);letter-spacing:.22em;color:var(--dim);text-transform:uppercase}
+.stepper{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+.step{display:flex;align-items:center;gap:8px;padding:7px 13px;border-radius:7px;color:var(--dim);font:600 11px var(--sans);letter-spacing:.12em;transition:.15s}
+.step .n{font:500 9px var(--mono);width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line2)}
+.step:hover{color:var(--txt)}
+.step.on{background:var(--panel3);color:#fff;box-shadow:inset 0 0 0 1px var(--line2)}
+.step.on .n{background:var(--accent);border-color:var(--accent);color:#000}
+.step.done .n{border-color:var(--ok);color:var(--ok)}
+.transport{display:flex;align-items:center;gap:6px;margin-left:auto}
+.tbtn{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;border:1px solid var(--line);background:var(--panel2)}
+.tbtn:hover{border-color:var(--line2)}
+.tbtn.play{width:42px;background:var(--accent);border-color:var(--accent);color:#000}
+.tbtn.on{color:var(--accent);border-color:var(--accent)}
+.clock{font:500 15px var(--mono);letter-spacing:.04em;padding:0 10px;min-width:118px;text-align:right}
+.bbt{font:500 10px var(--mono);color:var(--dim);display:flex;flex-direction:column;gap:2px;padding-left:8px;border-left:1px solid var(--line)}
+.bbt b{color:var(--txt);font-weight:500}
+.topright{display:flex;align-items:center;gap:10px;margin-left:14px}
+.toggle{display:flex;align-items:center;gap:7px;font:500 10px var(--mono);letter-spacing:.12em;color:var(--dim);cursor:pointer;user-select:none}
+.toggle i{width:28px;height:16px;border-radius:9px;background:var(--line2);position:relative;transition:.15s}
+.toggle i::after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:.15s}
+.toggle.on i{background:var(--accent)}.toggle.on i::after{left:14px}
+.btn{padding:8px 14px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);font:600 11px var(--sans);letter-spacing:.08em}
+.btn.primary{background:#fff;color:#000;border-color:#fff}
+.btn:hover{filter:brightness(1.15)}
+
+/* ---------- COACH ---------- */
+.coach{grid-area:coach;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(255,122,61,.10),transparent 60%);font-size:12px}
+.coach b{font:700 10px var(--mono);letter-spacing:.18em;color:var(--accent)}
+.coach .meta{margin-left:auto;font:500 10px var(--mono);color:var(--dimmer)}
+body[data-guide="off"] .coach{background:var(--panel)}
+
+/* ---------- ZONES / GUIDE FOCUS ---------- */
+.zone{transition:opacity .25s, box-shadow .25s}
+body[data-guide="on"] .zone:not(.z-view){opacity:.42}
+body[data-guide="on"] .zone:hover{opacity:.8}
+body[data-guide="on"][data-stage="load"] .z-media,
+body[data-guide="on"][data-stage="load"] .z-view,
+body[data-guide="on"][data-stage="listen"] .z-time,
+body[data-guide="on"][data-stage="listen"] .z-signals,
+body[data-guide="on"][data-stage="build"] .z-stack,
+body[data-guide="on"][data-stage="build"] .z-view,
+body[data-guide="on"][data-stage="map"] .z-signals,
+body[data-guide="on"][data-stage="map"] .z-insp,
+body[data-guide="on"][data-stage="shape"] .z-shape,
+body[data-guide="on"][data-stage="shape"] .z-time,
+body[data-guide="on"][data-stage="export"] .z-view{opacity:1;box-shadow:inset 0 0 0 1px rgba(255,122,61,.35)}
+
+/* ---------- LEFT ---------- */
+.left{grid-area:left;border-right:1px solid var(--line);background:var(--panel);overflow-y:auto;display:flex;flex-direction:column}
+.left section{padding:14px;border-bottom:1px solid var(--line)}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+.media-row{display:flex;gap:10px;align-items:center}
+.thumb{width:54px;height:34px;border-radius:5px;flex:none;position:relative;overflow:hidden}
+.thumb.audio{background:#0a0b0d;border:1px solid var(--line)}
+.thumb.video{background:radial-gradient(circle at 30% 70%,#ffb23d 0 4%,transparent 9%),radial-gradient(circle at 70% 64%,#3de0ff 0 3%,transparent 8%),linear-gradient(#0c1220,#1a1424 55%,#050608)}
+.fname{font:500 11px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fmeta{font:400 9.5px var(--mono);color:var(--dim);margin-top:3px}
+.tag{font:600 8.5px var(--mono);letter-spacing:.12em;padding:2px 5px;border-radius:4px;border:1px solid currentColor;display:inline-block}
+.stems{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:9px}
+.stem{font:500 9px var(--mono);letter-spacing:.08em;padding:5px 0;text-align:center;border-radius:5px;background:var(--bg);border:1px solid var(--line);color:var(--dim)}
+.stem.on{color:var(--txt);border-color:var(--line2)}
+.stem.on::before{content:"● ";color:var(--ok)}
+.gens{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.gen{white-space:nowrap;font:500 9.5px var(--mono);padding:5px 8px;border-radius:5px;border:1px dashed var(--line2);color:var(--dim)}
+.gen:hover{color:var(--txt);border-style:solid}
+.drop{margin-top:10px;border:1px dashed var(--line2);border-radius:10px;padding:12px;text-align:center;color:var(--dim);font-size:11px}
+.drop b{color:var(--txt);font-weight:500}
+.srcsel{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px}
+.srcsel button{font:500 8.5px var(--mono);letter-spacing:.08em;padding:3px 6px;border-radius:4px;color:var(--dim)}
+.srcsel button.on{background:var(--panel3);color:var(--txt)}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}
+.chip{position:relative;padding:8px 9px 9px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:grab;user-select:none;overflow:hidden}
+.chip:hover{border-color:var(--c)}
+.chip:active{cursor:grabbing}
+.chip .nm{display:flex;align-items:center;gap:6px;font:700 10px var(--mono);letter-spacing:.1em}
+.chip .nm::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--c);box-shadow:0 0 8px var(--c)}
+.chip .ds{font:400 8.5px var(--mono);color:var(--dim);margin-top:3px;white-space:nowrap}
+.chip .meter{height:3px;border-radius:2px;background:var(--bg);margin-top:7px;overflow:hidden}
+.chip .meter u{display:block;height:100%;width:0;background:var(--c)}
+.chip .kind{position:absolute;right:7px;top:7px;font:500 7.5px var(--mono);letter-spacing:.1em;color:var(--dimmer)}
+.chip.chroma .meter{display:grid;grid-template-columns:repeat(12,1fr);gap:1px;background:none;height:5px}
+.chip.chroma .meter u{width:auto;opacity:.15}
+.tip{font-size:10.5px;color:var(--dim);margin-top:12px;line-height:1.45}
+.tip kbd{font:500 9px var(--mono);border:1px solid var(--line2);border-radius:3px;padding:0 3px;color:var(--txt)}
+
+/* ---------- VIEW ---------- */
+.z-view{grid-area:view;display:flex;flex-direction:column;min-width:0;min-height:0;background:radial-gradient(ellipse at center,#0c0e12,#060709)}
+.vbar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.seg{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:2px}
+.seg button{white-space:nowrap;font:500 9.5px var(--mono);letter-spacing:.08em;padding:4px 9px;border-radius:5px;color:var(--dim)}
+.seg button.on{background:var(--panel3);color:var(--txt)}
+.vbar .spacer{flex:1}
+.vinfo{font:400 9.5px var(--mono);color:var(--dim)}
+#stage{flex:1;position:relative;display:grid;place-items:center;min-height:0;overflow:hidden}
+.screen{position:relative;overflow:hidden;background:#000;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px var(--line);
+  --scan:.5;--mask:.3;--curve:0;--flick:0;border-radius:calc(var(--curve) * 46px)}
+.screen-inner{position:absolute;inset:0;will-change:transform}
+.screen canvas{width:100%;height:100%;display:block}
+.scan,.mask,.vig,.lace{position:absolute;inset:0;pointer-events:none}
+.scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 1px,transparent 1px 3px);opacity:var(--scan)}
+.mask{background:repeating-linear-gradient(90deg,rgba(255,40,40,.5) 0 1px,rgba(40,255,80,.5) 1px 2px,rgba(40,120,255,.5) 2px 3px);mix-blend-mode:multiply;opacity:calc(var(--mask)*.45)}
+.vig{box-shadow:inset 0 0 calc(40px + var(--curve)*140px) rgba(0,0,0,calc(.4 + var(--curve)*.5))}
+.lace{background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 1px,transparent 1px 2px);opacity:0}
+.osd{position:absolute;font:500 13px var(--mono);color:#fff;text-shadow:0 0 6px rgba(255,255,255,.4),1px 1px 0 #000;letter-spacing:.06em;pointer-events:none}
+.osd.tl{left:4%;top:5%}.osd.tr{right:4%;top:5%}.osd.bl{left:4%;bottom:6%}.osd.br{right:4%;bottom:6%}
+.osd .rec{color:var(--rec)}
+.grat{position:absolute;inset:0;pointer-events:none;display:none}
+.screen[data-mode="360"] .grat.eq,.screen[data-mode="dome"] .grat.dm{display:block}
+.screen[data-mode="dome"]{border-radius:50%!important}
+.ab{position:absolute;inset:0 50% 0 0;backdrop-filter:grayscale(1) contrast(.85) brightness(.9);-webkit-backdrop-filter:grayscale(1) contrast(.85) brightness(.9);border-right:1px solid #fff;display:none}
+.screen[data-mode="ab"] .ab{display:block}
+.ab span,.ab em{position:absolute;top:10px;font:600 9px var(--mono);letter-spacing:.16em;background:rgba(0,0,0,.6);padding:3px 6px;border-radius:3px;font-style:normal}
+.ab span{left:10px}.ab em{left:calc(100% + 10px)}
+.ab i{position:absolute;right:-9px;top:50%;width:18px;height:34px;margin-top:-17px;border-radius:5px;background:#fff;cursor:ew-resize;pointer-events:auto}
+.readout{display:flex;align-items:center;gap:18px;padding:8px 14px;border-top:1px solid var(--line);font:500 10px var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden}
+.readout b{color:var(--txt);font-weight:500}
+.scenepill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:12px;background:var(--panel3);color:var(--txt)}
+.scenepill i{width:8px;height:8px;border-radius:50%}
+
+/* ---------- RIGHT ---------- */
+.right{grid-area:right;border-left:1px solid var(--line);background:var(--panel);overflow-y:auto}
+.right section{padding:14px;border-bottom:1px solid var(--line)}
+.stack{display:flex;flex-direction:column;gap:5px;margin-top:12px}
+.fx{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;position:relative}
+.fx:hover{border-color:var(--line2)}
+.fx.sel{border-color:var(--cc);box-shadow:0 0 0 1px var(--cc) inset,0 0 18px -8px var(--cc)}
+.fx.off{opacity:.45}
+.fx .grip{color:var(--dimmer);cursor:grab;font-size:11px;letter-spacing:-2px}
+.fx .ix{font:500 9px var(--mono);color:var(--dimmer);width:12px}
+.fx .nm{flex:1;min-width:0}
+.fx .nm b{display:block;font:600 12px var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx .cat{font:600 8px var(--mono);letter-spacing:.14em;color:var(--cc)}
+.fx .mods{display:flex;gap:3px}
+.fx .mods i{width:6px;height:6px;border-radius:50%}
+.pow{width:26px;height:15px;border-radius:8px;background:var(--line2);position:relative;flex:none}
+.pow::after{content:"";position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#888;transition:.12s}
+.fx:not(.off) .pow{background:color-mix(in srgb,var(--cc) 40%,#000)}
+.fx:not(.off) .pow::after{left:13px;background:var(--cc)}
+.fx.dragover{border-top:2px solid var(--accent)}
+.addfx{margin-top:6px;width:100%;padding:9px;border:1px dashed var(--line2);border-radius:9px;color:var(--dim);font:500 11px var(--sans)}
+.addfx:hover{color:var(--txt);border-color:var(--dim)}
+.insp-head{display:flex;align-items:center;gap:10px;margin-top:10px}
+.insp-head b{font:600 15px var(--sans)}
+.knobs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 6px;margin-top:14px}
+.knob{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0 7px;border-radius:9px;border:1px solid transparent;cursor:ns-resize;user-select:none;touch-action:none}
+.knob:hover{background:var(--panel2)}
+.knob.drop{border-color:var(--accent);background:rgba(255,122,61,.08)}
+.knob.selmap{background:var(--panel2);border-color:var(--line2)}
+.knob svg{width:58px;height:58px;overflow:visible}
+.knob .lbl{font:500 9.5px var(--mono);color:var(--dim);text-align:center}
+.knob .val{font:500 10px var(--mono)}
+.knob .mtag{font:700 7.5px var(--mono);letter-spacing:.08em;padding:1px 4px;border-radius:3px;color:#000;min-height:11px}
+.maplist{margin-top:12px;display:flex;flex-direction:column;gap:4px}
+.maprow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;background:var(--bg);border:1px solid var(--line);font:500 10px var(--mono);cursor:pointer}
+.maprow.sel{border-color:var(--line2);background:var(--panel3)}
+.maprow i{width:8px;height:8px;border-radius:2px}
+.maprow .arrow{color:var(--dimmer)}
+.maprow .dp{margin-left:auto;color:var(--dim)}
+.maprow .x{color:var(--dimmer);padding:0 2px}.maprow .x:hover{color:var(--rec)}
+.empty{font-size:11px;color:var(--dim);padding:10px;border:1px dashed var(--line2);border-radius:8px;text-align:center;margin-top:10px}
+
+.shape-title{font:600 13px var(--sans);margin-top:10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.shape-title .sig{font:700 10px var(--mono);letter-spacing:.08em;padding:2px 6px;border-radius:4px;color:#000}
+.shape-title .ar{color:var(--dim)}
+.plots{display:grid;grid-template-columns:118px 1fr;gap:8px;margin-top:10px}
+.plot{background:var(--bg);border:1px solid var(--line);border-radius:8px;position:relative;overflow:hidden}
+.plot canvas{display:block;width:100%;height:118px}
+.plot small{position:absolute;left:6px;top:5px;font:500 8px var(--mono);letter-spacing:.12em;color:var(--dimmer)}
+.sliders{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:9px 14px}
+.sl label{display:flex;justify-content:space-between;font:500 9.5px var(--mono);color:var(--dim)}
+.sl label span{color:var(--txt)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;background:transparent;margin-top:2px}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line2);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--txt);margin-top:-4px}
+input[type=range]::-moz-range-track{height:3px;background:var(--line2);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:var(--txt)}
+.row2{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+
+/* ---------- TIMELINE ---------- */
+.z-time{grid-area:time;border-top:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-width:0;min-height:0}
+.tl-bar{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line)}
+.tl-bar .vinfo{margin-left:auto}
+.tl-body{flex:1;display:flex;min-height:0;overflow-y:auto;overflow-x:hidden}
+.tl-labels{width:132px;flex:none;border-right:1px solid var(--line)}
+.tl-labels div{display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 12px;font:500 8.5px var(--mono);letter-spacing:.12em;color:var(--dim);border-bottom:1px solid #15181c}
+.tl-labels div i{width:6px;height:6px;border-radius:2px;margin-right:6px;display:inline-block}
+.tl-labels .eye{color:var(--dimmer);letter-spacing:0}
+.tl-lanes{flex:1;position:relative;min-width:0;cursor:crosshair}
+.tl-lanes canvas{display:block;width:100%}
+#tlPlay{position:absolute;top:0;bottom:0;width:1px;background:#fff;box-shadow:0 0 8px #fff;pointer-events:none}
+#tlPlay::before{content:"";position:absolute;top:0;left:-5px;border:5px solid transparent;border-top:7px solid #fff}
+
+/* ---------- MODALS ---------- */
+.modal{position:fixed;inset:0;background:rgba(3,4,6,.72);backdrop-filter:blur(6px);display:none;place-items:center;z-index:50}
+.modal.open{display:grid}
+.sheet{width:min(1040px,92vw);height:min(660px,86vh);background:var(--panel);border:1px solid var(--line2);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,.7)}
+.sheet-head{display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.sheet-head h2{font:600 18px var(--sans)}
+.sheet-head .x{margin-left:auto;font-size:18px;color:var(--dim)}
+.search{flex:0 1 280px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--txt);font:500 11px var(--mono)}
+.lib{flex:1;display:flex;min-height:0}
+.cats{width:180px;border-right:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.cats button{text-align:left;padding:7px 10px;border-radius:7px;font:600 10px var(--mono);letter-spacing:.12em;color:var(--dim);display:flex;align-items:center;gap:8px}
+.cats button i{width:7px;height:7px;border-radius:2px}
+.cats button.on{background:var(--panel3);color:var(--txt)}
+.cats button em{margin-left:auto;font-style:normal;color:var(--dimmer);font-weight:400}
+.grid{flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;align-content:start;grid-auto-rows:max-content}
+.lcard{border:1px solid var(--line);border-radius:12px;background:var(--panel2);overflow:hidden;display:flex;flex-direction:column}
+.lcard .pv{height:92px;position:relative}
+.lcard .pv canvas{width:100%;height:100%;display:block}
+.lcard .bd{padding:10px 11px 11px;display:flex;flex-direction:column;gap:5px;flex:1}
+.lcard .bd b{font:600 13px var(--sans)}
+.lcard .bd p{font-size:10.5px;color:var(--dim);line-height:1.4;flex:1}
+.lcard .ft{display:flex;align-items:center;gap:5px}
+.lcard .ft .btn{margin-left:auto;padding:5px 10px;font-size:10px}
+.badge{font:600 7.5px var(--mono);letter-spacing:.12em;padding:2px 5px;border-radius:3px;background:var(--panel3);color:var(--dim)}
+.badge.ml{background:#ff6bd622;color:#ff6bd6}.badge.new{background:#7dffa822;color:#7dffa8}.badge.port{background:#ffffff14;color:#aaa}
+.exp{flex:1;overflow-y:auto;padding:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.exp h4{font:600 9.5px var(--mono);letter-spacing:.18em;color:var(--dim);margin-bottom:10px}
+.opt{display:block;border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:8px;cursor:pointer;background:var(--panel2)}
+.opt.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.opt b{font:600 12.5px var(--sans);display:block}
+.opt p{font-size:10.5px;color:var(--dim);margin-top:3px;line-height:1.4}
+.opt .spec{font:500 9px var(--mono);color:var(--dimmer);margin-top:6px}
+.chk{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:11.5px}
+.chk input{accent-color:var(--accent)}
+.sheet-foot{display:flex;align-items:center;gap:10px;padding:14px 18px;border-top:1px solid var(--line);font:500 10px var(--mono);color:var(--dim)}
+.sheet-foot .btn{margin-left:auto}
+</style>
+</head>
+<body data-stage="map" data-guide="on">
+
+<header class="top">
+  <div class="brand"><span class="logo">ARAV</span><span class="sub">audio · reactive · av lab</span></div>
+  <nav class="stepper" id="stepper"></nav>
+  <div class="transport">
+    <button class="tbtn" id="bHome" title="Back to start">⏮</button>
+    <button class="tbtn play" id="bPlay" title="Play / pause (Space)">▶</button>
+    <button class="tbtn on" id="bLoop" title="Loop">⟲</button>
+    <div class="clock" id="clock">00:00.00</div>
+    <div class="bbt"><span>BAR <b id="bar">1.1</b></span><span><b>124</b> BPM · 4/4</span></div>
+  </div>
+  <div class="topright">
+    <div class="toggle on" id="guideT"><i></i>GUIDE</div>
+    <button class="btn" id="bSave">Save .arav</button>
+  </div>
+</header>
+
+<div class="coach"><b id="coachN">④ MAP</b><span id="coachT"></span><span class="meta">night_drive.arav · autosaved 12s ago</span></div>
+
+<!-- LEFT -->
+<aside class="left">
+  <section class="zone z-media">
+    <h3>Media <span class="tag" style="color:var(--ok)">ANALYSED</span></h3>
+    <div class="card">
+      <div class="media-row"><canvas class="thumb audio" id="audThumb" width="108" height="68"></canvas>
+        <div style="min-width:0"><div class="fname">night_drive_master.wav</div><div class="fmeta">3:12 · 48 kHz · stereo · −9.4 LUFS</div></div></div>
+      <div class="stems"><span class="stem on">DRUMS</span><span class="stem on">BASS</span><span class="stem on">VOX</span><span class="stem">OTHER</span></div>
+    </div>
+    <div class="card">
+      <div class="media-row"><div class="thumb video"></div>
+        <div style="min-width:0"><div class="fname">harbour_night_360.mp4</div><div class="fmeta">5760×2880 · 30 fps · 3:12</div></div></div>
+      <div class="row2" style="margin-top:8px"><span class="tag" style="color:#3de0ff">EQUIRECT</span><span class="tag" style="color:var(--dim)">LOOP</span><span class="tag" style="color:var(--dim)">TIME-REMAP OFF</span></div>
+    </div>
+    <div class="gens"><button class="gen">+ Test card</button><button class="gen">+ Noise</button><button class="gen">+ SDF forms</button><button class="gen">+ Webcam</button><button class="gen">+ Live input</button></div>
+    <div class="drop"><b>Drop audio, stems, video or images</b><br>wav · mp3 · flac · m4a · mp4 · mov · png seq</div>
+  </section>
+
+  <section class="zone z-signals" style="flex:1">
+    <h3>Signals
+      <div class="srcsel" id="srcsel"><button class="on" data-s="mix">MIX</button><button data-s="drums">DRM</button><button data-s="bass">BAS</button><button data-s="vox">VOX</button></div>
+    </h3>
+    <div class="chips" id="chips"></div>
+    <p class="tip">Drag a chip onto any knob to map it. <kbd>Shift</kbd>-drag a knob to set how far the audio pushes it. Signals follow the selected stem.</p>
+  </section>
+</aside>
+
+<!-- VIEW -->
+<main class="zone z-view">
+  <div class="vbar">
+    <div class="seg" id="vmode"><button class="on" data-m="frame">16:9</button><button data-m="360">360°</button><button data-m="dome">DOME</button><button data-m="ab">A | B</button></div>
+    <div class="seg" id="vres"><button>FULL</button><button class="on">½</button><button>¼</button></div>
+    <span class="spacer"></span>
+    <span class="vinfo" id="vinfo">1920×1080 · preview ½ · 60 fps</span>
+  </div>
+  <div id="stage">
+    <div class="screen" id="screen" data-mode="frame">
+      <div class="screen-inner" id="inner"><canvas id="view"></canvas></div>
+      <div class="lace" id="lace"></div><div class="mask"></div><div class="scan"></div><div class="vig"></div>
+      <svg class="grat eq" viewBox="0 0 200 100" preserveAspectRatio="none"><g stroke="rgba(61,224,255,.35)" stroke-width=".25" fill="none">
+        <path d="M0 25H200M0 50H200M0 75H200"/><path d="M50 0V100M100 0V100M150 0V100" stroke-dasharray="1 1"/>
+        <path d="M0 0V100M200 0V100" stroke="rgba(255,122,61,.8)" stroke-width=".6"/></g>
+        <g fill="rgba(61,224,255,.7)" font-size="3" font-family="monospace"><text x="1.5" y="4">0°</text><text x="51.5" y="4">90°</text><text x="101.5" y="4">180°</text><text x="151.5" y="4">270°</text><text x="160" y="97" fill="rgba(255,122,61,.9)">SEAM WRAP ON</text></g></svg>
+      <svg class="grat dm" viewBox="0 0 100 100"><g stroke="rgba(61,224,255,.35)" stroke-width=".25" fill="none"><circle cx="50" cy="50" r="16.6"/><circle cx="50" cy="50" r="33.3"/><circle cx="50" cy="50" r="49.6"/><path d="M50 0V100M0 50H100M15 15L85 85M85 15L15 85"/></g><text x="50" y="57" fill="rgba(61,224,255,.7)" font-size="2.6" font-family="monospace" text-anchor="middle">ZENITH</text></svg>
+      <div class="ab" id="ab"><span>SOURCE</span><em>OUTPUT</em><i id="abHandle"></i></div>
+      <div class="osd tl" id="osdTL"><span class="rec">●</span> REC</div>
+      <div class="osd tr" id="osdTR">SP ▶</div>
+      <div class="osd bl" id="osdBL">NOV 09 2026</div>
+      <div class="osd br" id="osdBR">00:00:00:00</div>
+    </div>
+  </div>
+  <div class="readout">
+    <span class="scenepill"><i id="scDot"></i><b id="scName">INTRO</b> → <span id="scScene">Fog</span></span>
+    <span>KICK <b id="roKick">0.00</b></span><span>BRIGHT <b id="roBright">0.00</b></span><span>KEY <b id="roKey">Am</b></span>
+    <span>ONSETS <b id="roOn">0</b></span><span style="margin-left:auto">GPU <b>4.1 ms</b></span><span>FPS <b id="roFps">60</b></span>
+  </div>
+</main>
+
+<!-- RIGHT -->
+<aside class="right">
+  <section class="zone z-stack">
+    <h3>Effect stack <span style="color:var(--dimmer);letter-spacing:.1em">TOP → BOTTOM</span></h3>
+    <div class="stack" id="stack"></div>
+    <button class="addfx" id="addfx">＋ Add effect — 52 in library</button>
+  </section>
+  <section class="zone z-insp">
+    <h3>Inspector <span id="inspCat"></span></h3>
+    <div class="insp-head"><b id="inspName">—</b><span style="margin-left:auto" class="vinfo">MIX</span><input type="range" id="mix" min="0" max="1" step=".01" style="width:90px"></div>
+    <div class="knobs" id="knobs"></div>
+    <div class="maplist" id="maplist"></div>
+  </section>
+  <section class="zone z-shape">
+    <h3>Response <span style="color:var(--dimmer);letter-spacing:.1em">HOW THE SOUND MOVES IT</span></h3>
+    <div id="shapeBody"></div>
+  </section>
+</aside>
+
+<!-- TIMELINE -->
+<section class="zone z-time">
+  <div class="tl-bar">
+    <h3 style="gap:12px">Timeline</h3>
+    <div class="seg"><button class="on">FIT</button><button>8 BARS</button><button>1 BAR</button></div>
+    <div class="seg"><button class="on">SNAP · BEAT</button><button>FREE</button></div>
+    <button class="gen">+ Lane</button><button class="gen">+ Automation</button><button class="gen">+ Marker</button>
+    <span class="vinfo">click to seek · drag ● on automation</span>
+  </div>
+  <div class="tl-body">
+    <div class="tl-labels" id="tlLabels"></div>
+    <div class="tl-lanes" id="lanes"><canvas id="tlc"></canvas><div id="tlPlay"></div></div>
+  </div>
+</section>
+
+<!-- LIBRARY -->
+<div class="modal" id="libModal">
+  <div class="sheet">
+    <div class="sheet-head"><h2>Effect library</h2><input class="search" id="libSearch" placeholder="search  e.g. trails, crt, depth…"><button class="x" data-close>✕</button></div>
+    <div class="lib"><div class="cats" id="cats"></div><div class="grid" id="libGrid"></div></div>
+  </div>
+</div>
+
+<!-- EXPORT -->
+<div class="modal" id="expModal">
+  <div class="sheet">
+    <div class="sheet-head"><h2>Export</h2><span class="vinfo">night_drive.arav · 3:12 · 5,952 frames @ 30fps</span><button class="x" data-close>✕</button></div>
+    <div class="exp">
+      <div><h4>RENDER MODE</h4>
+        <label class="opt"><b>Real-time capture</b><p>Records what you see while it plays. Fast, any browser. Good for sketches and live sessions.</p><div class="spec">WEBM · MEDIARECORDER · 1× SPEED</div></label>
+        <label class="opt on"><b>Frame-accurate render</b><p>Renders every frame offline from the analysis. Identical every time, never drops frames.</p><div class="spec">MP4 H.264 / WEBM VP9 · WEBCODECS · CHROME/EDGE</div></label>
+        <label class="opt"><b>Image sequence</b><p>Lossless PNG frames for compositing in Resolve, Nuke, AE.</p><div class="spec">PNG · ZIP</div></label>
+      </div>
+      <div><h4>PROJECTION</h4>
+        <label class="opt"><b>Flat</b><p>16:9, 9:16, 1:1, or a custom LED-wall size.</p><div class="spec">UP TO 3840×2160</div></label>
+        <label class="opt on"><b>360° equirectangular</b><p>2:1 with seam-wrapped effects and spherical metadata for headsets and YouTube VR.</p><div class="spec">4096×2048 · 5760×2880</div></label>
+        <label class="opt"><b>Dome master</b><p>180° fisheye for planetarium and dome projection.</p><div class="spec">4096×4096</div></label>
+      </div>
+      <div><h4>ALSO EXPORT</h4>
+        <label class="chk"><input type="checkbox" checked> Mixdown audio in the video</label>
+        <label class="chk"><input type="checkbox" checked> Analysis data — JSON (per frame)</label>
+        <label class="chk"><input type="checkbox"> Analysis data — CSV for TouchDesigner / Excel</label>
+        <label class="chk"><input type="checkbox"> Onsets + sections as markers (EDL / Resolve)</label>
+        <label class="chk"><input type="checkbox"> Blob tracks (JSON, per frame)</label>
+        <label class="chk"><input type="checkbox" checked> Project file (.arav.json)</label>
+        <h4 style="margin-top:18px">QUALITY</h4>
+        <div class="seg" style="display:inline-flex"><button>DRAFT</button><button class="on">HIGH</button><button>MASTER</button></div>
+      </div>
+    </div>
+    <div class="sheet-foot">est. 6 min 40 s on this machine · 1.9 GB<button class="btn primary">Render 5,952 frames</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a=0,b=1)=>v<a?a:v>b?b:v;
+
+/* ================= SYNTHETIC TRACK ================= */
+const DUR=192, BPM=124, SPB=60/BPM;
+const SECTIONS=[
+  {n:'INTRO',a:0,b:16,e:.22,k:0,h:.3,c:'#3b5b8c',scene:'Fog'},
+  {n:'BUILD',a:16,b:46,e:.5,k:1,h:.6,c:'#a37a2a',scene:'Ridge rise'},
+  {n:'DROP',a:46,b:92,e:1,k:1,h:1,c:'#c2413b',scene:'Data storm'},
+  {n:'BREAK',a:92,b:116,e:.32,k:0,h:.45,c:'#2d8a86',scene:'Drift'},
+  {n:'DROP II',a:116,b:162,e:1,k:1,h:1,c:'#c23b78',scene:'Data storm +'},
+  {n:'OUTRO',a:162,b:192,e:.28,k:.6,h:.2,c:'#4b4f80',scene:'Fade to tape'}];
+const secIdx=t=>{for(let i=0;i<SECTIONS.length;i++)if(t<SECTIONS[i].b)return i;return SECTIONS.length-1};
+const KEYS=['Am','F','C','G'], ROOTS=[9,5,0,7];
+function h1(n){n=Math.sin(n*127.1+311.7)*43758.5453;return n-Math.floor(n)}
+function vnoise(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,s=v=>v*v*(3-2*v),
+  h=(a,b)=>h1(a*57.31+b*131.77),a=h(xi,yi),b=h(xi+1,yi),c=h(xi,yi+1),d=h(xi+1,yi+1),u=s(xf),v=s(yf);
+  return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+const STEMW={mix:{kick:1,bass:1,mid:1,high:1},drums:{kick:1.15,bass:.35,mid:.3,high:1.2},bass:{kick:.3,bass:1.2,mid:.35,high:.1},vox:{kick:.1,bass:.2,mid:1.3,high:.5}};
+let stem='mix';
+function synth(t,src=stem){
+  const si=secIdx(t),s=SECTIONS[si],beat=t/SPB,bi=Math.floor(beat),ph=beat-bi,W=STEMW[src];
+  let e=s.e; if(s.n==='BUILD')e=.3+.7*(t-s.a)/(s.b-s.a);
+  const kick=clamp(s.k*Math.exp(-ph*6)*(.65+.35*e)*W.kick);
+  const hph=(ph+.5)%1;
+  const high=clamp((s.h*Math.exp(-hph*13)*.85+.18*e*h1(Math.floor(t*24)))*W.high);
+  const bass=clamp((e*(.4+.4*Math.sin(beat*Math.PI*.5)**2)+kick*.2)*W.bass);
+  const mid=clamp((.2+.5*e*(.5+.5*Math.sin(t*.9+Math.sin(t*.23)*3)))*W.mid);
+  const loud=clamp(.12+.62*e+.22*kick);
+  const bright=clamp(.45+.28*Math.sin(t*.21)+.2*high);
+  const noise=clamp(s.n==='BREAK'?.62+.2*Math.sin(t*2):.2+.25*high);
+  const onset=(s.k&&ph<.07)||(e>.4&&h1(bi*3.1)>.78&&Math.abs(ph-.75)<.035)?1:0;
+  const ci=Math.floor(t/(SPB*8))%4;
+  return {kick,bass,mid,high,loud,bright,noise,onset,beat:ph,pan:clamp(.5+.42*Math.sin(t*.37)),chroma:ROOTS[ci]/12,section:si/(SECTIONS.length-1),_ci:ci,_si:si,_bar:Math.floor(bi/4)+1,_b:bi%4+1};
+}
+const SIGS=[
+  {id:'kick',n:'KICK',c:'#ff7a3d',d:'40–120 Hz hits',k:'BAND'},
+  {id:'bass',n:'BASS',c:'#ffb23d',d:'60–250 Hz body',k:'BAND'},
+  {id:'mid',n:'MID',c:'#ffe14d',d:'250 Hz–2 kHz',k:'BAND'},
+  {id:'high',n:'HIGH',c:'#3de0ff',d:'6–16 kHz air',k:'BAND'},
+  {id:'loud',n:'LOUD',c:'#7dffa8',d:'overall level',k:'LEVEL'},
+  {id:'bright',n:'BRIGHT',c:'#b98cff',d:'spectral centroid',k:'TIMBRE'},
+  {id:'noise',n:'NOISE',c:'#9aa3b2',d:'noisy ↔ tonal',k:'TIMBRE'},
+  {id:'onset',n:'ONSET',c:'#ff3d71',d:'new hit detected',k:'TRIG'},
+  {id:'beat',n:'BEAT φ',c:'#f2f2f2',d:'position in beat',k:'PHASE'},
+  {id:'pan',n:'PAN',c:'#5d8bff',d:'stereo position',k:'SPACE'},
+  {id:'chroma',n:'CHROMA',c:'#ff6bd6',d:'harmony → hue',k:'PITCH'},
+  {id:'section',n:'SECTION',c:'#4dffd2',d:'song structure',k:'STEP'}];
+const SIG=Object.fromEntries(SIGS.map(s=>[s.id,s]));
+
+/* ================= EFFECTS + MAPPINGS ================= */
+const CATC={SOURCE:'#8a93a3',GLITCH:'#ff3d71',TRAILS:'#b98cff',VINTAGE:'#ffb23d',SPATIAL:'#3de0ff',TRACK:'#7dffa8',TIME:'#5d8bff',PLAYHEAD:'#ffe14d',STYLISE:'#ff7a3d',SIM:'#4dffd2',ML:'#ff6bd6',OUTPUT:'#ffffff'};
+const pp=(k,n,v,fmt)=>({k,n,v,live:v,fmt});
+let FX=[
+  {id:'cam',name:'Handycam',cat:'VINTAGE',on:true,mix:1,params:[pp('shake','Shake',.25),pp('pump','Exposure',.3),pp('lace','Interlace',.35),pp('osd','REC OSD',1),pp('wb','WB drift',.2),pp('drop','Dropouts',.1)]},
+  {id:'slit',name:'Slit-Scan',cat:'TIME',on:true,mix:1,params:[pp('depth','Time depth',.25),pp('slices','Slices',.45),pp('dir','Vertical',0)]},
+  {id:'cloud',name:'Point Cloud · ridges',cat:'SPATIAL',on:true,mix:1,params:[pp('density','Density',.55),pp('z','Z-extrude',.3),pp('size','Point size',.35),pp('scatter','Scatter',0),pp('orbit','Orbit',.25),pp('lines','Ridge lines',.85)]},
+  {id:'fb',name:'Feedback',cat:'TRAILS',on:true,mix:1,params:[pp('decay','Decay',.45),pp('zoom','Zoom',.55),pp('rotate','Rotate',.5),pp('hue','Hue drift',.15)]},
+  {id:'play',name:'Scan Playhead',cat:'PLAYHEAD',on:true,mix:1,params:[pp('rate','Bars / sweep',.35),pp('glow','Glow',.6),pp('displace','Displace',.25)]},
+  {id:'blob',name:'Blob Callouts',cat:'TRACK',on:true,mix:1,params:[pp('thresh','Threshold',.3),pp('count','Max boxes',.55),pp('jitter','Jitter',.15),pp('lock','Lock-on',0)]},
+  {id:'crt',name:'CRT',cat:'VINTAGE',on:true,mix:1,params:[pp('scan','Scanlines',.5),pp('curve','Curvature',.35),pp('mask','Shadow mask',.4),pp('bloom','Bloom / RGB',.2),pp('flick','Flicker',.25)]},
+];
+const mk=(fx,p,sig,o={})=>Object.assign({id:Math.random().toString(36).slice(2),fx,p,sig,depth:.5,curve:.5,atk:.01,rel:.25,lo:0,hi:1,mode:'cont',inv:false,env:0,prev:0,hist:[]},o);
+let MAPS=[
+  mk('cloud','z','kick',{depth:.55,curve:.62,rel:.18}),
+  mk('cloud','scatter','onset',{depth:.35,mode:'trig',rel:.22}),
+  mk('fb','decay','loud',{depth:.4,rel:.6}),
+  mk('fb','hue','bright',{depth:.5,rel:.8}),
+  mk('slit','depth','bass',{depth:.45,rel:.4}),
+  mk('blob','lock','onset',{depth:1,mode:'trig',rel:.35}),
+  mk('crt','bloom','kick',{depth:.55,rel:.12}),
+  mk('cam','shake','kick',{depth:.4,rel:.15}),
+  mk('play','displace','high',{depth:.4,rel:.1}),
+];
+const AUTO={fx:'fb',p:'zoom',keys:[[0,.5],[16,.5],[44,.62],[46,.7],[92,.62],[100,.42],[116,.5],[118,.72],[162,.66],[192,.48]]};
+const autoAt=t=>{const k=AUTO.keys;if(t<=k[0][0])return k[0][1];for(let i=1;i<k.length;i++)if(t<=k[i][0]){const[a,va]=k[i-1],[b,vb]=k[i],u=(t-a)/(b-a||1),s=u*u*(3-2*u);return va+(vb-va)*s}return k[k.length-1][1]};
+const fxById=id=>FX.find(f=>f.id===id);
+const param=(f,k)=>f.params.find(p=>p.k===k);
+let selFx='cloud', selMap=MAPS[0].id;
+
+const curveExp=c=>Math.pow(4,(c-.5)*2);
+const transfer=(m,x)=>{if(m.inv)x=1-x;return m.lo+(m.hi-m.lo)*Math.pow(clamp(x),curveExp(m.curve))};
+
+function updateMods(S,dt){
+  for(const m of MAPS){
+    const x=S[m.sig];
+    if(m.mode==='trig'){ if(x>.5&&m.prev<=.5)m.env=1; else m.env*=Math.exp(-dt/Math.max(m.rel,.01)); }
+    else{ const target=m.mode==='gate'?(x>.5?1:0):x; const tc=target>m.env?m.atk:m.rel; m.env+=(target-m.env)*(1-Math.exp(-dt/Math.max(tc,.003))); }
+    m.prev=x;
+    m.out=m.mode==='trig'?transfer(m,m.env):transfer(m,m.env);
+    m.hist.push([m.mode==='trig'?x:x,m.out]); if(m.hist.length>240)m.hist.shift();
+  }
+  for(const f of FX)for(const p of f.params){
+    let base=(f.id===AUTO.fx&&p.k===AUTO.p)?autoAt(T):p.v; p.base=base;
+    let mod=0;for(const m of MAPS)if(m.fx===f.id&&m.p===p.k)mod+=m.out*m.depth;
+    p.live=clamp(base+mod);
+  }
+}
+const P=(f,k)=>param(fxById(f),k).live;
+const ON=id=>fxById(id).on;
+
+/* ================= STATE / TRANSPORT ================= */
+let T=48.2, playing=true, loop=true, last=performance.now(), onsetCount=0, stage='map';
+const STAGES=[['load','LOAD'],['listen','LISTEN'],['build','BUILD'],['map','MAP'],['shape','SHAPE'],['export','EXPORT']];
+const COACH={
+  load:'Drop in an audio track and a visual source. Adding stems (drums / bass / vox) gives cleaner signals. No footage? Start from a generator.',
+  listen:'Analysis runs once, up front. Read the song before you patch: sections, kicks, brightness, onsets. Click the timeline to audition.',
+  build:'Stack effects top to bottom, and the order matters: trails before CRT looks different from CRT before trails. ＋ opens the library.',
+  map:'Drag a signal chip onto any knob. The coloured ring shows how far the audio can push that parameter. Watch it move.',
+  shape:'Tune how the sound moves the image: curve, attack, release, continuous vs trigger. Draw the long arc of the piece on automation lanes.',
+  export:'Use real-time capture for sketches and frame-accurate render for finals. You can also export the analysis as data for TouchDesigner, Unreal or AE.'};
+const NUM=['①','②','③','④','⑤','⑥'];
+function setStage(s){stage=s;document.body.dataset.stage=s;
+  $$('.step').forEach((b,i)=>{b.classList.toggle('on',b.dataset.s===s);b.classList.toggle('done',STAGES.findIndex(x=>x[0]===s)>i)});
+  const i=STAGES.findIndex(x=>x[0]===s);$('#coachN').textContent=NUM[i]+' '+STAGES[i][1];$('#coachT').textContent=COACH[s];
+  if(s==='export')$('#expModal').classList.add('open');}
+$('#stepper').innerHTML=STAGES.map(([k,n],i)=>`<button class="step" data-s="${k}"><span class="n">${i+1}</span>${n}</button>`).join('');
+$$('.step').forEach(b=>b.onclick=()=>setStage(b.dataset.s));
+$('#guideT').onclick=()=>{const on=document.body.dataset.guide!=='on';document.body.dataset.guide=on?'on':'off';$('#guideT').classList.toggle('on',on)};
+const setPlay=v=>{playing=v;$('#bPlay').textContent=v?'❚❚':'▶'};
+$('#bPlay').onclick=()=>setPlay(!playing);
+$('#bHome').onclick=()=>{T=0};
+$('#bLoop').onclick=()=>{loop=!loop;$('#bLoop').classList.toggle('on',loop)};
+$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('open'));
+$$('.modal').forEach(m=>m.onclick=e=>{if(e.target===m)m.classList.remove('open')});
+$$('.opt').forEach(o=>o.onclick=()=>{o.parentElement.querySelectorAll('.opt').forEach(x=>x.classList.remove('on'));o.classList.add('on')});
+$$('.seg').forEach(s=>s.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;s.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))}));
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();setPlay(!playing)}
+  if(e.key>='1'&&e.key<='6')setStage(STAGES[+e.key-1][0]);
+  if(e.key==='Escape')$$('.modal').forEach(m=>m.classList.remove('open'))});
+$('#bSave').onclick=()=>{$('#bSave').textContent='Saved ✓';setTimeout(()=>$('#bSave').textContent='Save .arav',1200)};
+
+/* ================= SIGNAL CHIPS ================= */
+$('#chips').innerHTML=SIGS.map(s=>`<div class="chip ${s.id==='chroma'?'chroma':''}" draggable="true" data-sig="${s.id}" style="--c:${s.c}">
+  <span class="kind">${s.k}</span><div class="nm">${s.n}</div><div class="ds">${s.d}</div>
+  <div class="meter">${s.id==='chroma'?Array.from({length:12},(_,i)=>`<u style="background:hsl(${i*30},90%,60%)"></u>`).join(''):'<u></u>'}</div></div>`).join('');
+$$('.chip').forEach(c=>c.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/sig',c.dataset.sig);e.dataTransfer.effectAllowed='link'}));
+$$('#srcsel button').forEach(b=>b.onclick=()=>{stem=b.dataset.s;$$('#srcsel button').forEach(x=>x.classList.toggle('on',x===b))});
+const chipMeters=Object.fromEntries(SIGS.map(s=>[s.id,$(`.chip[data-sig="${s.id}"] .meter`)]));
+
+/* ================= STACK ================= */
+function renderStack(){
+  $('#stack').innerHTML=FX.map((f,i)=>{const mods=MAPS.filter(m=>m.fx===f.id).map(m=>`<i style="background:${SIG[m.sig].c}"></i>`).join('');
+    return `<div class="fx ${f.on?'':'off'} ${f.id===selFx?'sel':''}" data-id="${f.id}" draggable="true" style="--cc:${CATC[f.cat]}">
+    <span class="grip">⋮⋮</span><span class="ix">${i+1}</span><div class="nm"><span class="cat">${f.cat}</span><b>${f.name}</b></div><div class="mods">${mods}</div><span class="pow" data-pow></span></div>`}).join('');
+  $$('.fx').forEach(el=>{const id=el.dataset.id;
+    el.onclick=e=>{if(e.target.closest('[data-pow]')){fxById(id).on=!fxById(id).on;renderStack();return}selFx=id;const m=MAPS.find(m=>m.fx===id);if(m)selMap=m.id;renderStack();renderInspector();renderShape()};
+    el.addEventListener('dragstart',e=>e.dataTransfer.setData('text/fx',id));
+    el.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/fx')){e.preventDefault();el.classList.add('dragover')}});
+    el.addEventListener('dragleave',()=>el.classList.remove('dragover'));
+    el.addEventListener('drop',e=>{el.classList.remove('dragover');const src=e.dataTransfer.getData('text/fx');if(!src||src===id)return;
+      const a=FX.findIndex(f=>f.id===src),item=FX.splice(a,1)[0];FX.splice(FX.findIndex(f=>f.id===id),0,item);renderStack()});
+  });
+}
+
+/* ================= INSPECTOR / KNOBS ================= */
+const A0=-.75*Math.PI,A1=.75*Math.PI,ang=v=>A0+(A1-A0)*clamp(v);
+function arc(r,a0,a1){if(a1<a0)[a0,a1]=[a1,a0];if(a1-a0<.001)a1=a0+.001;const p=a=>[29+r*Math.sin(a),29-r*Math.cos(a)];const[x0,y0]=p(a0),[x1,y1]=p(a1);return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1-a0>Math.PI?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`}
+let knobEls=[];
+function renderInspector(){
+  const f=fxById(selFx);$('#inspName').textContent=f.name;$('#inspCat').innerHTML=`<span style="color:${CATC[f.cat]}">${f.cat}</span>`;$('#mix').value=f.mix;
+  $('#knobs').innerHTML=f.params.map(p=>{const ms=MAPS.filter(m=>m.fx===f.id&&m.p===p.k);
+    return `<div class="knob ${ms.some(m=>m.id===selMap)?'selmap':''}" data-k="${p.k}"><svg viewBox="0 0 58 58">
+      <path d="${arc(19,A0,A1)}" stroke="#2a2f37" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path class="kb" stroke="#d9dce1" stroke-width="4" fill="none" stroke-linecap="round"/>
+      ${ms.map((m,i)=>`<path class="kr" data-m="${m.id}" stroke="${SIG[m.sig].c}" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".9" style="filter:drop-shadow(0 0 3px ${SIG[m.sig].c})"/>`).join('')}
+      <circle cx="29" cy="29" r="12" fill="#13161a" stroke="#2e333b"/><line class="ki" x1="29" y1="29" x2="29" y2="19" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      <circle class="kd" r="2.6" fill="#fff"/></svg>
+      <span class="val mono"></span><span class="lbl">${p.n}</span>
+      <span class="mtag" style="background:${ms[0]?SIG[ms[0].sig].c:'transparent'}">${ms.map(m=>SIG[m.sig].n).join('+')}</span></div>`}).join('');
+  knobEls=$$('.knob').map(el=>{const p=param(f,el.dataset.k);
+    el.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/sig')){e.preventDefault();el.classList.add('drop')}});
+    el.addEventListener('dragleave',()=>el.classList.remove('drop'));
+    el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('drop');const sig=e.dataTransfer.getData('text/sig');if(!sig)return;
+      const ex=MAPS.find(m=>m.fx===f.id&&m.p===p.k&&m.sig===sig);if(ex){selMap=ex.id}else{const m=mk(f.id,p.k,sig,{depth:.4,mode:SIG[sig].k==='TRIG'?'trig':'cont'});MAPS.push(m);selMap=m.id}
+      renderStack();renderInspector();renderShape()});
+    el.addEventListener('pointerdown',e=>{const ms=MAPS.filter(m=>m.fx===f.id&&m.p===p.k);const sm=ms.find(m=>m.id===selMap)||ms[0];
+      if(ms.length&&sm.id!==selMap){selMap=sm.id;renderShape();$$('.knob').forEach(k=>k.classList.toggle('selmap',k===el))}
+      el.setPointerCapture(e.pointerId);let y=e.clientY;const mv=ev=>{const d=(y-ev.clientY)/160;y=ev.clientY;
+        if(ev.shiftKey&&sm){sm.depth=clamp(sm.depth+d);syncShape()}else if(!(f.id===AUTO.fx&&p.k===AUTO.p))p.v=clamp(p.v+d)};
+      const up=()=>{el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up)};
+      el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up)});
+    return {el,p,kb:el.querySelector('.kb'),ki:el.querySelector('.ki'),kd:el.querySelector('.kd'),val:el.querySelector('.val'),rings:[...el.querySelectorAll('.kr')]}});
+  const ms=MAPS.filter(m=>m.fx===f.id);
+  $('#maplist').innerHTML=ms.length?ms.map(m=>`<div class="maprow ${m.id===selMap?'sel':''}" data-m="${m.id}"><i style="background:${SIG[m.sig].c}"></i>${SIG[m.sig].n}<span class="arrow">→</span>${param(f,m.p).n}<span class="dp">${m.mode==='trig'?'TRIG':m.mode==='gate'?'GATE':''} ${Math.round(m.depth*100)}%</span><span class="x" data-x>✕</span></div>`).join('')
+    :`<div class="empty">No mappings yet. Drag a signal chip from the left onto a knob.</div>`;
+  $$('.maprow').forEach(r=>r.onclick=e=>{if(e.target.closest('[data-x]')){MAPS=MAPS.filter(m=>m.id!==r.dataset.m);if(selMap===r.dataset.m)selMap=(MAPS.find(m=>m.fx===selFx)||{}).id;renderStack();renderInspector();renderShape();return}
+    selMap=r.dataset.m;renderInspector();renderShape()});
+}
+$('#mix').oninput=e=>{fxById(selFx).mix=+e.target.value};
+function updateKnobs(){
+  for(const k of knobEls){const a=ang(k.p.base??k.p.v),al=ang(k.p.live);
+    k.kb.setAttribute('d',arc(19,A0,a));
+    k.ki.setAttribute('x2',29+10*Math.sin(al));k.ki.setAttribute('y2',29-10*Math.cos(al));
+    k.kd.setAttribute('cx',29+19*Math.sin(al));k.kd.setAttribute('cy',29-19*Math.cos(al));
+    k.rings.forEach((r,i)=>{const m=MAPS.find(x=>x.id===r.dataset.m);if(!m)return;r.setAttribute('d',arc(24+i*3.5,a,ang((k.p.base??k.p.v)+m.depth)))});
+    k.val.textContent=(k.p.live*100).toFixed(0);
+  }
+}
+
+/* ================= SHAPE / RESPONSE EDITOR ================= */
+function renderShape(){
+  const m=MAPS.find(m=>m.id===selMap);
+  if(!m){$('#shapeBody').innerHTML='<div class="empty">Select a mapping to shape its response.</div>';return}
+  const f=fxById(m.fx),s=SIG[m.sig];
+  const S=(k,n,min,max,step,fmt)=>`<div class="sl"><label>${n}<span data-o="${k}"></span></label><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${m[k]}" data-f="${fmt}"></div>`;
+  $('#shapeBody').innerHTML=`<div class="shape-title"><span class="sig" style="background:${s.c}">${s.n}</span><span class="ar">→</span>${f.name} <span class="ar">›</span> ${param(f,m.p).n}</div>
+   <div class="row2"><div class="seg" id="modeSeg"><button data-v="cont">CONTINUOUS</button><button data-v="trig">TRIGGER</button><button data-v="gate">GATE</button></div>
+   <div class="toggle ${m.inv?'on':''}" id="invT"><i></i>INVERT</div></div>
+   <div class="plots"><div class="plot"><small>CURVE</small><canvas id="cvT" width="236" height="236"></canvas></div>
+     <div class="plot"><small>IN <span style="color:#666">━</span> / OUT <span style="color:${s.c}">━</span> · last 4s</small><canvas id="cvS" width="420" height="236"></canvas></div></div>
+   <div class="sliders">${S('depth','Depth',0,1,.01,'pct')}${S('curve','Curve',0,1,.01,'curve')}${S('atk','Attack',0,.5,.005,'ms')}${S('rel','Release',0,2,.01,'ms')}${S('lo','Range low',0,1,.01,'pct')}${S('hi','Range high',0,1,.01,'pct')}</div>
+   <div class="row2"><button class="gen">Quantise to beat</button><button class="gen">Smooth ×2</button><button class="gen">Save as preset</button></div>`;
+  $$('#modeSeg button').forEach(b=>{b.classList.toggle('on',b.dataset.v===m.mode);b.onclick=()=>{m.mode=b.dataset.v;$$('#modeSeg button').forEach(x=>x.classList.toggle('on',x===b));renderInspectorList()}});
+  $('#invT').onclick=()=>{m.inv=!m.inv;$('#invT').classList.toggle('on',m.inv)};
+  $$('#shapeBody input[type=range]').forEach(i=>i.oninput=()=>{m[i.dataset.k]=+i.value;syncShape(true)});
+  syncShape();
+}
+function renderInspectorList(){const keep=selMap;renderInspector();selMap=keep}
+function syncShape(fromSlider){const m=MAPS.find(m=>m.id===selMap);if(!m)return;
+  $$('#shapeBody input[type=range]').forEach(i=>{if(!fromSlider)i.value=m[i.dataset.k];const v=m[i.dataset.k],f=i.dataset.f;
+    $(`[data-o="${i.dataset.k}"]`).textContent=f==='pct'?Math.round(v*100)+'%':f==='ms'?Math.round(v*1000)+' ms':(curveExp(v)<1?'log ':curveExp(v)>1?'exp ':'lin ')+curveExp(v).toFixed(2)});
+  const dp=$(`.maprow[data-m="${m.id}"] .dp`);if(dp)dp.textContent=`${m.mode==='trig'?'TRIG':m.mode==='gate'?'GATE':''} ${Math.round(m.depth*100)}%`;
+}
+function drawShapePlots(){
+  const m=MAPS.find(m=>m.id===selMap);if(!m)return;const cT=$('#cvT'),cS=$('#cvS');if(!cT)return;
+  const c=SIG[m.sig].c;let x=cT.getContext('2d'),W=cT.width,H=cT.height;
+  x.clearRect(0,0,W,H);x.strokeStyle='#1d2127';x.lineWidth=1;for(let i=1;i<4;i++){x.beginPath();x.moveTo(i*W/4,0);x.lineTo(i*W/4,H);x.moveTo(0,i*H/4);x.lineTo(W,i*H/4);x.stroke()}
+  x.strokeStyle=c;x.lineWidth=4;x.beginPath();for(let i=0;i<=60;i++){const u=i/60,v=transfer(m,u);x[i?'lineTo':'moveTo'](u*W,H-v*H)}x.stroke();
+  const inp=m.mode==='trig'?m.env:m.env, ox=(m.inv?inp:inp)*W, oy=H-transfer(m,inp)*H;
+  x.fillStyle='#fff';x.beginPath();x.arc(ox,oy,8,0,7);x.fill();x.strokeStyle='rgba(255,255,255,.3)';x.lineWidth=2;x.setLineDash([6,6]);x.beginPath();x.moveTo(ox,H);x.lineTo(ox,oy);x.lineTo(0,oy);x.stroke();x.setLineDash([]);
+  x=cS.getContext('2d');W=cS.width;H=cS.height;x.clearRect(0,0,W,H);
+  const h=m.hist,n=h.length;x.lineWidth=2.5;x.strokeStyle='#5a606a';x.beginPath();h.forEach((d,i)=>x[i?'lineTo':'moveTo'](i/(240-1)*W,H-6-d[0]*(H-12)));x.stroke();
+  x.lineWidth=4;x.strokeStyle=c;x.shadowColor=c;x.shadowBlur=10;x.beginPath();h.forEach((d,i)=>x[i?'lineTo':'moveTo'](i/(240-1)*W,H-6-d[1]*(H-12)));x.stroke();x.shadowBlur=0;
+}
+
+/* ================= TIMELINE ================= */
+const LANES=[{n:'',h:18},{n:'SECTIONS',h:24},{n:'WAVEFORM',h:40,c:'#d9dce1'},{n:'SPECTRUM',h:50},{n:'KICK',h:24,c:'#ff7a3d'},{n:'BRIGHT',h:24,c:'#b98cff'},{n:'ONSETS',h:18,c:'#ff3d71'},{n:'AUTO · ZOOM',h:44,c:'#b98cff',auto:true}];
+const LTOT=LANES.reduce((a,l)=>a+l.h,0);
+$('#tlLabels').innerHTML=LANES.map(l=>`<div style="height:${l.h}px">${l.n?`<span>${l.c?`<i style="background:${l.c}"></i>`:''}${l.n}</span><span class="eye">${l.n?'◉':''}</span>`:''}</div>`).join('');
+let tlBase=null,tlW=0;
+const laneY=i=>LANES.slice(0,i).reduce((a,l)=>a+l.h,0);
+function cmap(v){v=clamp(v);const st=[[0,[6,7,12]],[.25,[48,18,82]],[.5,[170,40,90]],[.75,[250,120,40]],[1,[255,240,160]]];for(let i=1;i<st.length;i++)if(v<=st[i][0]){const[a,ca]=st[i-1],[b,cb]=st[i],u=(v-a)/(b-a);return ca.map((c,j)=>c+(cb[j]-c)*u)}return st[4][1]}
+function buildTimeline(){
+  const lanes=$('#lanes'),cv=$('#tlc'),dpr=devicePixelRatio||1;tlW=lanes.clientWidth;if(!tlW)return;
+  cv.width=tlW*dpr;cv.height=LTOT*dpr;cv.style.height=LTOT+'px';
+  tlBase=document.createElement('canvas');tlBase.width=cv.width;tlBase.height=cv.height;const x=tlBase.getContext('2d');x.scale(dpr,dpr);
+  const W=tlW,tx=t=>t/DUR*W;
+  // stats per px
+  const st=[];for(let i=0;i<W;i++){let k=0,l=0,b=0,o=0,hi=0,bs=0,md=0;for(let j=0;j<5;j++){const S=synth((i+j/5)/W*DUR,'mix');k=Math.max(k,S.kick);l=Math.max(l,S.loud);b+=S.bright/5;o=Math.max(o,S.onset);hi+=S.high/5;bs+=S.bass/5;md+=S.mid/5}st.push({k,l,b,o,hi,bs,md})}
+  // ruler
+  let y=0;x.fillStyle='#0b0c0f';x.fillRect(0,0,W,LANES[0].h);x.font='500 8.5px JetBrains Mono';
+  for(let bar=0;bar*4*SPB<DUR;bar++){const px=tx(bar*4*SPB);const big=bar%8===0;x.fillStyle=big?'#4b515a':'#262a31';x.fillRect(px,big?6:12,1,big?12:6);if(big){x.fillStyle='#7a818c';x.fillText(bar+1,px+3,12)}}
+  y+=LANES[0].h;
+  // sections
+  SECTIONS.forEach(s=>{const a=tx(s.a),b=tx(s.b);x.fillStyle=s.c+'55';x.fillRect(a+1,y+3,b-a-2,LANES[1].h-6);x.fillStyle=s.c;x.fillRect(a+1,y+3,2,LANES[1].h-6);x.fillStyle='#e8eaee';x.font='600 9px JetBrains Mono';x.fillText(s.n,a+7,y+15);x.fillStyle='#ffffff88';x.font='400 8.5px JetBrains Mono';const w=x.measureText(s.n).width;if(b-a>w+70)x.fillText('· '+s.scene,a+12+w,y+15)});
+  y+=LANES[1].h;
+  // waveform
+  const wh=LANES[2].h,wm=y+wh/2;for(let i=0;i<W;i++){const s=st[i],amp=(s.l*.75+s.k*.25)*(.75+.25*h1(i))*wh*.46;const si=SECTIONS[secIdx(i/W*DUR)];x.fillStyle=si.c;x.globalAlpha=.9;x.fillRect(i,wm-amp,1,amp*2);x.globalAlpha=1;x.fillStyle='#ffffff30';x.fillRect(i,wm-amp*.45,1,amp*.9)}
+  y+=wh;
+  // spectrum
+  const sh=LANES[3].h,img=x.createImageData(Math.ceil(W*dpr),Math.round(sh*dpr));const IW=img.width,IH=img.height;
+  for(let i=0;i<IW;i++){const s=st[Math.min(W-1,Math.floor(i/dpr))];for(let j=0;j<IH;j++){const f=1-j/IH;
+    let v=s.k*Math.exp(-f*14)*1.1+s.bs*.8*Math.exp(-(((f-.12)/.08)**2))+s.md*.6*Math.exp(-(((f-.42)/.2)**2))+s.hi*.85*Math.exp(-(((f-.8)/.16)**2))+.08*h1(i*.37+j*1.7);
+    const c=cmap(v*.95),o=(j*IW+i)*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=255}}
+  x.putImageData(img,0,y*dpr);y+=sh;
+  // feature lanes
+  const lane=(h,key,c)=>{x.fillStyle=c+'33';x.strokeStyle=c;x.lineWidth=1;x.beginPath();x.moveTo(0,y+h);for(let i=0;i<W;i++)x.lineTo(i,y+h-2-st[i][key]*(h-5));x.lineTo(W,y+h);x.closePath();x.fill();
+    x.beginPath();for(let i=0;i<W;i++)x[i?'lineTo':'moveTo'](i,y+h-2-st[i][key]*(h-5));x.stroke();y+=h};
+  lane(LANES[4].h,'k','#ff7a3d');lane(LANES[5].h,'b','#b98cff');
+  const oh=LANES[6].h;x.fillStyle='#ff3d71';for(let i=0;i<W;i++)if(st[i].o)x.fillRect(i,y+3,1,oh-6);y+=oh;
+  // row separators
+  let yy=0;x.fillStyle='#15181c';LANES.forEach(l=>{yy+=l.h;x.fillRect(0,yy-1,W,1)});
+  drawTimeline();
+}
+function drawTimeline(){
+  if(!tlBase)return;const cv=$('#tlc'),x=cv.getContext('2d'),dpr=devicePixelRatio||1,W=tlW;
+  x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,cv.width,cv.height);x.drawImage(tlBase,0,0);x.scale(dpr,dpr);
+  const ai=LANES.findIndex(l=>l.auto),y=laneY(ai),h=LANES[ai].h,ty=v=>y+h-4-v*(h-8),tx=t=>t/DUR*W;
+  x.fillStyle='#b98cff18';x.beginPath();x.moveTo(0,y+h);for(let i=0;i<=W;i+=2)x.lineTo(i,ty(autoAt(i/W*DUR)));x.lineTo(W,y+h);x.fill();
+  x.strokeStyle='#b98cff';x.lineWidth=1.5;x.beginPath();for(let i=0;i<=W;i+=2)x[i?'lineTo':'moveTo'](i,ty(autoAt(i/W*DUR)));x.stroke();
+  AUTO.keys.forEach(([t,v])=>{x.fillStyle='#0e1013';x.strokeStyle='#fff';x.lineWidth=1.5;x.beginPath();x.arc(tx(t),ty(v),3.5,0,7);x.fill();x.stroke()});
+}
+(()=>{const lanes=$('#lanes');let drag=null;
+  const loc=e=>{const r=lanes.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
+  lanes.addEventListener('pointerdown',e=>{const p=loc(e),ai=LANES.findIndex(l=>l.auto),y0=laneY(ai),h=LANES[ai].h;
+    if(p.y>y0&&p.y<y0+h){const k=AUTO.keys.findIndex(([t,v])=>Math.hypot(t/DUR*tlW-p.x,y0+h-4-v*(h-8)-p.y)<8);if(k>=0){drag={k,y0,h};lanes.setPointerCapture(e.pointerId);return}}
+    T=clamp(p.x/tlW)*DUR;drag={seek:1};lanes.setPointerCapture(e.pointerId)});
+  lanes.addEventListener('pointermove',e=>{if(!drag)return;const p=loc(e);
+    if(drag.seek){T=clamp(p.x/tlW)*DUR;return}
+    const K=AUTO.keys,k=drag.k,lo=k?K[k-1][0]+.5:0,hi=k<K.length-1?K[k+1][0]-.5:DUR;
+    K[k]=[k===0||k===K.length-1?K[k][0]:Math.min(hi,Math.max(lo,p.x/tlW*DUR)),clamp((drag.y0+drag.h-4-p.y)/(drag.h-8))];drawTimeline()});
+  lanes.addEventListener('pointerup',()=>drag=null);
+})();
+
+/* ================= VIEWER ================= */
+const view=$('#view'),vx=view.getContext('2d');
+const scene=document.createElement('canvas'),sx=scene.getContext('2d');
+const prev=document.createElement('canvas'),px=prev.getContext('2d');
+const RING=24;let ring=[],head=0,vmode='frame';
+function sizeCanvases(){const[W,H]=vmode==='360'?[1440,720]:vmode==='dome'?[900,900]:[1280,720];
+  for(const c of[view,scene,prev]){c.width=W;c.height=H}
+  ring=Array.from({length:RING},()=>{const c=document.createElement('canvas');c.width=W/2;c.height=H/2;return c});
+  $('#screen').dataset.mode=vmode;
+  $('#vinfo').textContent=(vmode==='360'?'5760×2880 equirect':vmode==='dome'?'4096² dome master':'1920×1080')+' · preview ½ · 60 fps';fitScreen()}
+function fitScreen(){const st=$('#stage').getBoundingClientRect(),ar=view.width/view.height;let w=st.width-40,h=w/ar;if(h>st.height-40){h=st.height-40;w=h*ar}const s=$('#screen');s.style.width=w+'px';s.style.height=h+'px'}
+$$('#vmode button').forEach(b=>b.addEventListener('click',()=>{vmode=b.dataset.m;sizeCanvases()}));
+(()=>{const h=$('#abHandle'),ab=$('#ab');h.addEventListener('pointerdown',e=>{h.setPointerCapture(e.pointerId);const mv=ev=>{const r=$('#screen').getBoundingClientRect();ab.style.right=(100-clamp((ev.clientX-r.left)/r.width,.05,.95)*100)+'%'};
+  h.addEventListener('pointermove',mv);h.addEventListener('pointerup',()=>h.removeEventListener('pointermove',mv),{once:true})})})();
+
+function drawScene(c,W,H,t,S){
+  c.clearRect(0,0,W,H);
+  // "footage": drifting harbour lights
+  c.globalCompositeOperation='lighter';
+  for(let i=0;i<28;i++){const sp=6+h1(i+9)*22,x=((h1(i)*(W+120)+t*sp)%(W+120))-60,y=H*(.12+h1(i+3)*.28),r=8+h1(i+5)*26,warm=h1(i+11)>.4;
+    const g=c.createRadialGradient(x,y,0,x,y,r);const a=(.06+.12*h1(i+7))*(.6+.8*S.mid);g.addColorStop(0,warm?`rgba(255,178,90,${a})`:`rgba(80,200,255,${a})`);g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2)}
+  c.globalCompositeOperation='source-over';
+  const out={peaks:[],cross:[]};
+  if(!ON('cloud'))return out;
+  const den=P('cloud','density'),R=Math.round(12+den*30),C=Math.round(70+den*100),zA=H*(.05+P('cloud','z')*.34),orb=Math.sin(t*.25)*P('cloud','orbit'),sc=P('cloud','scatter'),ps=P('cloud','size'),la=P('cloud','lines');
+  const hue=(S.chroma*360+190)%360,ab=ON('crt')?P('crt','bloom')*7:0,phx=ON('play')?playX(t,W):-1e9,dis=ON('play')?P('play','displace'):0,tq=Math.floor(t*12);
+  const pr=Math.round((R-1)*.72);
+  for(let r=0;r<R;r++){const rr=r/(R-1),yb=H*(.3+.62*Math.pow(rr,1.3)),spread=.55+.8*rr,pts=new Float32Array((C+1)*2);let best=1e9,bi=-1;
+    for(let i=0;i<=C;i++){const u=i/C;let x=W/2+(u-.5)*W*spread+orb*W*.14*(1-rr);
+      const prof=Math.exp(-(((u-.5)/.22)**2))*.85+.15;let n=vnoise(u*7+r*.31,r*.55-t*.45)*.75+vnoise(u*19,r*1.3+t*.9)*.25;
+      let a=Math.pow(n,2.2)*prof*(.35+.65*rr);if(dis>0)a*=1+dis*3*Math.exp(-(((x-phx)/55)**2));
+      let y=yb-a*zA*(1+rr*.3);if(sc>.01){x+=(h1(i*13.1+r*7.7+tq)-.5)*sc*90;y+=(h1(i*3.3+r*1.9+tq)-.5)*sc*60}
+      pts[i*2]=x;pts[i*2+1]=y;if(r===pr)out.peaks.push({x,y,a,u});const d=Math.abs(x-phx);if(d<best){best=d;bi=i}}
+    c.beginPath();c.moveTo(pts[0],pts[1]);for(let i=1;i<=C;i++)c.lineTo(pts[i*2],pts[i*2+1]);c.lineTo(pts[C*2],H);c.lineTo(pts[0],H);c.closePath();c.fillStyle='rgba(4,5,9,.93)';c.fill();
+    const al=la*(.3+.7*rr);
+    const stroke=(dx,col,w)=>{c.beginPath();c.moveTo(pts[0]+dx,pts[1]);for(let i=1;i<=C;i++)c.lineTo(pts[i*2]+dx,pts[i*2+1]);c.strokeStyle=col;c.lineWidth=w;c.stroke()};
+    if(al>.02){if(ab>.3){c.globalCompositeOperation='lighter';stroke(ab,`rgba(255,40,60,${al*.7})`,1.8);stroke(-ab,`rgba(40,220,255,${al*.7})`,1.8);c.globalCompositeOperation='source-over'}
+      stroke(0,`hsla(${hue},${25+S.bright*45}%,${68+rr*24}%,${al})`,1.6+rr*1.2)}
+    if(ps>.05){const s=1.5+ps*4.5*(.4+rr);c.fillStyle=`hsla(${hue},40%,85%,${.5+rr*.5})`;for(let i=0;i<=C;i+=2)c.fillRect(pts[i*2]-s/2,pts[i*2+1]-s/2,s,s)}
+    if(bi>=0&&best<20)out.cross.push([pts[bi*2],pts[bi*2+1],rr]);
+  }
+  return out;
+}
+function playX(t,W){const bars=1+Math.round(P('play','rate')*3),per=bars*4*SPB;return((t%per)/per)*W}
+function compositeSlit(c,W,H){
+  if(!ON('slit')){c.drawImage(scene,0,0);return}
+  const n=Math.round(4+P('slit','slices')*30),depth=P('slit','depth')*(RING-1),vert=P('slit','dir')>.5;
+  for(let i=0;i<n;i++){const u=i/(n-1),k=Math.round(Math.abs(Math.sin(u*Math.PI))*depth),src=k===0?scene:ring[(head-k+RING*4)%RING];
+    c.save();c.beginPath();vert?c.rect(i*W/n,0,W/n+1,H):c.rect(0,i*H/n,W,H/n+1);c.clip();c.drawImage(src,0,0,W,H);c.restore()}
+}
+function drawOverlays(c,W,H,t,S,o){
+  c.font='500 13px JetBrains Mono';
+  if(ON('play')){const x=playX(t,W),g=P('play','glow');const gr=c.createLinearGradient(x-80,0,x+4,0);gr.addColorStop(0,'rgba(255,225,77,0)');gr.addColorStop(1,`rgba(255,225,77,${.25*g})`);c.fillStyle=gr;c.fillRect(x-80,0,84,H);
+    c.fillStyle=`rgba(255,240,180,${.6+.4*g})`;c.fillRect(x,0,1.5,H);
+    o.cross.forEach(([cx,cy,rr])=>{c.fillStyle='#ffe14d';c.beginPath();c.arc(cx,cy,2+rr*3+S.high*3,0,7);c.fill()})}
+  if(ON('blob')&&o.peaks.length){const K=1+Math.round(P('blob','count')*5),seg=Math.floor(o.peaks.length/K),th=P('blob','thresh'),lock=P('blob','lock'),jit=P('blob','jitter');
+    for(let k=0;k<K;k++){let b=null;for(let i=k*seg;i<(k+1)*seg;i++)if(!b||o.peaks[i].a>b.a)b=o.peaks[i];if(!b||b.a<th*.5)continue;
+      const jx=(h1(k+Math.floor(t*10))-.5)*jit*30,jy=(h1(k*7+Math.floor(t*10))-.5)*jit*30,bw=60+b.a*90,bh=40+b.a*60,x0=b.x-bw/2+jx,y0=b.y-bh*.6+jy,L=12;
+      const col=lock>.3?`rgba(255,61,113,${.6+lock*.4})`:'rgba(125,255,168,.95)';c.strokeStyle=col;c.lineWidth=1.5+lock*2;
+      c.beginPath();[[x0,y0,1,1],[x0+bw,y0,-1,1],[x0,y0+bh,1,-1],[x0+bw,y0+bh,-1,-1]].forEach(([x,y,sx,sy])=>{c.moveTo(x+sx*L,y);c.lineTo(x,y);c.lineTo(x,y+sy*L)});c.stroke();
+      c.strokeStyle='rgba(125,255,168,.25)';c.lineWidth=1;c.strokeRect(x0,y0,bw,bh);
+      c.beginPath();c.moveTo(b.x-6,b.y);c.lineTo(b.x+6,b.y);c.moveTo(b.x,b.y-6);c.lineTo(b.x,b.y+6);c.strokeStyle=col;c.stroke();
+      const lx=x0+bw+18,ly=y0-22-k%2*16;c.beginPath();c.moveTo(x0+bw,y0);c.lineTo(lx,ly+8);c.lineTo(lx+8,ly+8);c.strokeStyle='rgba(255,255,255,.5)';c.stroke();
+      const hz=Math.round(40+b.u*9000),db=(-24+b.a*22).toFixed(1),txt=`TRK_0${k+1}  ${hz}Hz  ${db}dB`;
+      const tw=c.measureText(txt).width;c.fillStyle='rgba(0,0,0,.65)';c.fillRect(lx+8,ly,tw+12,18);c.fillStyle=lock>.3?'#ff3d71':'#7dffa8';c.fillText(txt,lx+14,ly+13);
+      if(lock>.3){c.fillStyle='#ff3d71';c.fillText('LOCK',x0,y0+bh+15)}}
+    if(o.peaks.length>4&&K>1){c.strokeStyle='rgba(125,255,168,.12)';c.beginPath();for(let k=0;k<K;k++){const p=o.peaks[Math.min(o.peaks.length-1,k*seg+(seg>>1))];c[k?'lineTo':'moveTo'](p.x,p.y)}c.stroke()}}
+}
+let fpsAcc=0,fpsN=0,fpsT=0;
+function renderView(t,S){
+  const W=view.width,H=view.height;
+  const o=drawScene(sx,W,H,t,S);
+  vx.globalAlpha=1;vx.fillStyle='#04050a';vx.fillRect(0,0,W,H);
+  if(ON('fb')){vx.save();vx.globalAlpha=Math.min(.96,.3+.66*P('fb','decay'));vx.translate(W/2,H/2);const z=1+(P('fb','zoom')-.5)*.1;vx.scale(z,z);vx.rotate((P('fb','rotate')-.5)*.08);
+    vx.filter=`hue-rotate(${(P('fb','hue')*70).toFixed(1)}deg)`;vx.drawImage(prev,-W/2,-H/2,W,H);vx.restore()}
+  compositeSlit(vx,W,H);
+  const rc=ring[head].getContext('2d');rc.clearRect(0,0,ring[head].width,ring[head].height);rc.drawImage(scene,0,0,ring[head].width,ring[head].height);head=(head+1)%RING;
+  px.drawImage(view,0,0);
+  drawOverlays(vx,W,H,t,S,o);
+  // CSS-side looks (CRT, handycam)
+  const scr=$('#screen'),crt=ON('crt'),cam=ON('cam');
+  scr.style.setProperty('--scan',crt?P('crt','scan'):0);scr.style.setProperty('--mask',crt?P('crt','mask'):0);scr.style.setProperty('--curve',crt?P('crt','curve'):0);
+  const fl=crt?1-P('crt','flick')*.12*h1(Math.floor(t*30)):1;
+  let tf='none',flt=`brightness(${fl.toFixed(3)})`;
+  if(cam){const sh=P('cam','shake'),k=Math.floor(t*30);tf=`translate(${((vnoise(t*2,1)-.5)*sh*22).toFixed(1)}px,${((vnoise(t*2,7)-.5)*sh*16).toFixed(1)}px) rotate(${((vnoise(t*1.3,3)-.5)*sh*1.6).toFixed(2)}deg) scale(${1+sh*.04})`;
+    flt+=` brightness(${(1+P('cam','pump')*(S.loud-.5)*.5).toFixed(3)}) sepia(${(P('cam','wb')*(.5+.5*Math.sin(t*.3))*.5).toFixed(2)})`;
+    $('#lace').style.opacity=P('cam','lace');if(P('cam','drop')>.05&&h1(k)<P('cam','drop')*.15)flt+=' contrast(2) brightness(1.6)'}
+  else $('#lace').style.opacity=0;
+  $('#inner').style.transform=tf;view.style.filter=flt;
+  const showOsd=cam&&P('cam','osd')>.5;$$('.osd').forEach(e=>e.style.display=showOsd?'':'none');
+  if(showOsd){const fr=Math.floor((t%1)*30),ss=Math.floor(t)%60,mm=Math.floor(t/60);$('#osdBR').textContent=`00:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}:${String(fr).padStart(2,'0')}`;$('#osdTL').querySelector('.rec').style.opacity=Math.floor(t*2)%2?1:.2}
+}
+
+/* ================= LIBRARY ================= */
+const LIB=[
+ ['GLITCH','Block Displace','Cells jump out of place; reseeds on every onset.','port'],['GLITCH','Grid Stretch','Cells scale outward past their bounds.','port'],['GLITCH','Chromatic Shift','RGB split, global or per cell.','port'],['GLITCH','Wave Displace','Sine-wave row and column offsets.','port'],['GLITCH','Column Scan','Echoing vertical scan stripes.','port'],['GLITCH','Pixel Sort','Sorts spans by brightness above a threshold.','port'],['GLITCH','DCT Macroblock','JPEG-style 8×8 crush, quality follows loudness.','new'],['GLITCH','Datamosh','Freezes the keyframe and drags pixels along motion. Onsets drop the I-frame.','new'],['GLITCH','Bit Crush','Posterise, palette crush, channel swaps.',''],
+ ['TRAILS','Feedback','Zoom / rotate / hue-drift echo of the last frame.',''],['TRAILS','Luma Trails','Only bright pixels leave trails.',''],['TRAILS','Self-Displace','The trail warps itself by its own brightness.','new'],['TRAILS','Echo Frames','Strobe copies on beat subdivisions.',''],
+ ['VINTAGE','CRT','Scanlines, shadow mask, curvature, phosphor glow.',''],['VINTAGE','VHS','Chroma bleed, tracking wobble, head-switch noise.',''],['VINTAGE','Handycam','Kick-driven shake, exposure pump, REC OSD.',''],['VINTAGE','Film','Grain, gate weave, dust, halation, light leaks.',''],['VINTAGE','8mm Gate','Frame lines, sprocket jitter, burn-outs.',''],
+ ['SPATIAL','Point Cloud','Image as a 3D point field, Z from brightness or depth.',''],['SPATIAL','Ridge Lines','Rows become stacked mountain lines.',''],['SPATIAL','Voxels','Extruded cubes per cell.',''],['SPATIAL','Plexus','Nearest-neighbour lines between points.',''],['SPATIAL','Depth Slice','A plane sweeps through depth on the beat.','ml'],
+ ['TRACK','Blob Callouts','Boxes, crosshairs and live data labels.',''],['TRACK','Motion Boxes','Track what moves, not what is bright.',''],['TRACK','Pose Skeleton','Body landmarks as overlay anchors.','ml'],['TRACK','Object Labels','"Surveillance UI" with real object classes.','ml'],
+ ['TIME','Slit-Scan','Each slice shows a different moment in the past.',''],['TIME','Time Remap','Video speed follows loudness and reverses on hits.','new'],['TIME','Beat Repeat','Quantised stutter and loop of frames.','new'],['TIME','Freeze Frame','Holds on onsets with decay.',''],
+ ['PLAYHEAD','Scan Playhead','Sweeping line that reveals, displaces or triggers.',''],['PLAYHEAD','Oscilloscope','Live waveform drawn over the frame.',''],['PLAYHEAD','Spectro Scroll','The spectrogram as a moving texture.',''],['PLAYHEAD','Beat Ticker','Bar and beat counter graphics.',''],
+ ['STYLISE','ASCII','Glyph rendering; density follows level.',''],['STYLISE','Dither','Bayer or error-diffusion 1-bit.',''],['STYLISE','Halftone','Dot screen with audio dot size.',''],['STYLISE','Contours','Topographic isolines from brightness or depth.','new'],['STYLISE','Gradient Map','Palette follows the harmony (chroma).','new'],['STYLISE','Kaleido','Mirror segments step on the beat.',''],['STYLISE','Droste','Recursive spiral zoom.',''],['STYLISE','Bloom','Glow and anamorphic streaks.',''],
+ ['SIM','Fluid','Stable fluids; audio injects dye and force.',''],['SIM','Reaction-Diffusion','Gray-Scott growth seeded by the frame.',''],['SIM','Particles','Emitted on onsets, advected by flow.',''],
+ ['ML','Depth Anything','Depth map from any 2D footage, in the browser.','ml'],['ML','Segment Person','Effect the figure or the background only.','ml'],['ML','Optical Flow','Motion vectors for mosh and particles.','ml'],['ML','Whisper Lyrics','Word-timed transcription as kinetic type.','ml'],
+ ['OUTPUT','Equirect 360','Seam-wrapped 2:1 output with headset preview.',''],['OUTPUT','Ambisonic Focus','Effects follow where the sound is in a 4-ch AmbiX mix.','new']];
+let libCat='ALL';
+function renderLib(){const q=$('#libSearch').value.toLowerCase();const cats=['ALL',...Object.keys(CATC).filter(c=>c!=='SOURCE')];
+  $('#cats').innerHTML=cats.map(c=>`<button class="${c===libCat?'on':''}" data-c="${c}"><i style="background:${CATC[c]||'#fff'}"></i>${c}<em>${c==='ALL'?LIB.length:LIB.filter(l=>l[0]===c).length}</em></button>`).join('');
+  $$('#cats button').forEach(b=>b.onclick=()=>{libCat=b.dataset.c;renderLib()});
+  const items=LIB.filter(l=>(libCat==='ALL'||l[0]===libCat)&&(!q||(l[1]+l[2]+l[0]).toLowerCase().includes(q)));
+  $('#libGrid').innerHTML=items.map((l,i)=>`<div class="lcard"><div class="pv"><canvas data-i="${LIB.indexOf(l)}" width="420" height="184"></canvas></div><div class="bd"><b>${l[1]}</b><p>${l[2]}</p>
+    <div class="ft"><span class="badge" style="color:${CATC[l[0]]}">${l[0]}</span>${l[3]?`<span class="badge ${l[3]}">${l[3]==='port'?'FROM v2.17':l[3].toUpperCase()}</span>`:''}<button class="btn" data-add="${LIB.indexOf(l)}">Add</button></div></div></div>`).join('');
+  $$('#libGrid canvas').forEach(c=>drawPreview(c,LIB[+c.dataset.i]));
+  $$('[data-add]').forEach(b=>b.onclick=()=>{const l=LIB[+b.dataset.add],id='fx'+Math.random().toString(36).slice(2,6);
+    FX.push({id,name:l[1],cat:l[0],on:true,mix:1,params:[pp('amt','Amount',.5),pp('size','Size',.4),pp('speed','Speed',.3),pp('detail','Detail',.5)]});selFx=id;renderStack();renderInspector();renderShape();$('#libModal').classList.remove('open')});
+}
+function drawPreview(c,l){const x=c.getContext('2d'),W=c.width,H=c.height,col=CATC[l[0]],seed=l[1].length*7.3;
+  x.fillStyle='#08090c';x.fillRect(0,0,W,H);
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,col+'40');g.addColorStop(1,'#08090c');x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.strokeStyle=col;x.fillStyle=col;x.lineWidth=2;
+  const k=l[0];
+  if(k==='GLITCH'){for(let i=0;i<26;i++){x.globalAlpha=.2+h1(i+seed)*.7;x.fillRect(h1(i*3+seed)*W,h1(i*5+seed)*H,20+h1(i*7)*120,4+h1(i*9)*26)}}
+  else if(k==='TRAILS'){for(let i=0;i<14;i++){x.globalAlpha=1-i/14;x.beginPath();x.arc(W/2+i*9,H/2-i*3,38-i*1.5,0,7);x.stroke()}}
+  else if(k==='VINTAGE'){x.globalAlpha=.5;for(let y=0;y<H;y+=4)x.fillRect(0,y,W,1);x.globalAlpha=1;x.font='600 22px JetBrains Mono';x.fillText('● REC',18,36)}
+  else if(k==='SPATIAL'){for(let r=0;r<12;r++)for(let i=0;i<60;i++){x.globalAlpha=.3+r/16;const u=i/59;x.fillRect(u*W,H*.25+r*11-Math.pow(vnoise(u*6+seed,r*.5),2)*50*Math.exp(-(((u-.5)/.25)**2)),2,2)}}
+  else if(k==='TRACK'){[[.3,.45],[.65,.6]].forEach(([a,b])=>{x.strokeRect(a*W-34,b*H-26,68,52);x.font='500 13px JetBrains Mono';x.fillText('TRK_0'+(a>.5?2:1),a*W+44,b*H-26)})}
+  else if(k==='TIME'){for(let i=0;i<20;i++){x.globalAlpha=.25+.75*(i/20);x.fillRect(0,i*H/20,W*(.3+.6*Math.abs(Math.sin(i*.4+seed))),H/20-2)}}
+  else if(k==='PLAYHEAD'){x.globalAlpha=.4;x.beginPath();for(let i=0;i<W;i++)x.lineTo(i,H/2+Math.sin(i*.07+seed)*28*Math.sin(i*.013));x.stroke();x.globalAlpha=1;x.fillRect(W*.62,0,3,H)}
+  else if(k==='STYLISE'){x.font='500 12px JetBrains Mono';for(let y=14;y<H;y+=14)for(let i=0;i<W;i+=10){const v=vnoise(i*.02+seed,y*.03);x.globalAlpha=v;x.fillText(' .:-=+*#%@'[Math.floor(v*10)],i,y)}}
+  else if(k==='SIM'){for(let i=0;i<500;i++){const a=h1(i)*6.28,r=h1(i+seed)*80;x.globalAlpha=.6;x.fillRect(W/2+Math.cos(a+r*.05)*r*1.8,H/2+Math.sin(a+r*.05)*r,2,2)}}
+  else if(k==='ML'){const gr=x.createRadialGradient(W/2,H*.6,10,W/2,H*.6,120);gr.addColorStop(0,'#fff');gr.addColorStop(1,'#000');x.fillStyle=gr;x.fillRect(0,0,W,H);x.globalCompositeOperation='multiply';x.fillStyle=col;x.fillRect(0,0,W,H);x.globalCompositeOperation='source-over'}
+  else{x.globalAlpha=.6;for(let i=0;i<=8;i++){x.beginPath();x.moveTo(i*W/8,0);x.lineTo(i*W/8,H);x.stroke()}for(let i=1;i<4;i++){x.beginPath();x.moveTo(0,i*H/4);x.lineTo(W,i*H/4);x.stroke()}}
+  x.globalAlpha=1}
+$('#addfx').onclick=()=>{$('#libModal').classList.add('open');renderLib()};
+$('#libSearch').oninput=renderLib;
+
+/* ================= AUDIO THUMB ================= */
+(()=>{const c=$('#audThumb'),x=c.getContext('2d');for(let i=0;i<c.width;i++){const S=synth(i/c.width*DUR,'mix'),a=(S.loud*.8+S.kick*.2)*c.height*.42;x.fillStyle=SECTIONS[S._si].c;x.fillRect(i,c.height/2-a,1,a*2)}})();
+
+/* ================= LOOP ================= */
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(playing){T+=dt;if(T>=DUR)T=loop?0:(setPlay(false),DUR-.001)}
+  const S=synth(T);if(S.onset&&!frame.po)onsetCount++;frame.po=S.onset;
+  updateMods(S,playing?dt:dt*.0001+1e-4);
+  renderView(T,S);updateKnobs();drawShapePlots();
+  for(const s of SIGS){const el=chipMeters[s.id];if(s.id==='chroma'){[...el.children].forEach((u,i)=>u.style.opacity=i===ROOTS[S._ci]?1:(i===(ROOTS[S._ci]+4)%12||i===(ROOTS[S._ci]+7)%12)?.55:.12)}else el.firstChild.style.width=(S[s.id]*100).toFixed(1)+'%'}
+  $('#tlPlay').style.left=(T/DUR*tlW)+'px';
+  const mm=Math.floor(T/60),ss=(T%60);$('#clock').textContent=`${String(mm).padStart(2,'0')}:${ss.toFixed(2).padStart(5,'0')}`;
+  $('#bar').textContent=`${S._bar}.${S._b}`;
+  const sc=SECTIONS[S._si];$('#scName').textContent=sc.n;$('#scScene').textContent=sc.scene;$('#scDot').style.background=sc.c;
+  $('#roKick').textContent=S.kick.toFixed(2);$('#roBright').textContent=S.bright.toFixed(2);$('#roKey').textContent=KEYS[S._ci];$('#roOn').textContent=onsetCount;
+  fpsAcc+=dt;fpsN++;if(now-fpsT>500){$('#roFps').textContent=Math.round(fpsN/fpsAcc);fpsAcc=0;fpsN=0;fpsT=now}
+  requestAnimationFrame(frame);
+}
+new ResizeObserver(()=>{fitScreen();buildTimeline()}).observe(document.body);
+setStage('map');setPlay(true);renderStack();renderInspector();renderShape();sizeCanvases();
+document.fonts&&document.fonts.ready.then(buildTimeline);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

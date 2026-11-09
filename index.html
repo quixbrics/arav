@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARAV Lab</title>
+<meta name="description" content="ARAV — audio-reactive audio-visual lab for immersive film-making.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2307080a'/%3E%3Cpath d='M5 22 10 10 15 22M7 18h6M18 22V10h4.5a3.5 3.5 0 0 1 0 7H18M22.5 17l4.5 5' stroke='%23ff7a3d' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body data-stage="load" data-guide="on">
+<div id="small">ARAV needs a desktop browser window at least 1100 px wide.<br>Chrome or Edge recommended.</div>
+
+<header class="top">
+  <div class="brand"><span class="logo">ARAV</span><span class="sub">audio · reactive · av lab</span></div>
+  <nav class="stepper" id="stepper"></nav>
+  <div class="transport">
+    <button class="tbtn" id="bHome" title="Back to start (Home)">⏮</button>
+    <button class="tbtn play" id="bPlay" title="Play / pause (Space)">▶</button>
+    <button class="tbtn on" id="bLoop" title="Loop">⟲</button>
+    <div class="clock" id="clock">00:00.00</div>
+    <div class="bbt"><span>BAR <b id="bar">1.1</b></span><span><b id="bpmLbl">—</b> BPM · <b id="keyLbl">—</b></span></div>
+  </div>
+  <div class="topright">
+    <div class="toggle on" id="guideT" title="Guide mode: highlights the panels for each step"><i></i>GUIDE</div>
+    <button class="ibtn" id="bUndo" title="Undo (⌘/Ctrl+Z)">↶</button>
+    <button class="ibtn" id="bRedo" title="Redo (⇧⌘/Ctrl+Z)">↷</button>
+    <button class="btn" id="bProject">Project ▾</button>
+    <button class="ibtn" id="bHelp" title="Help & shortcuts (?)">?</button>
+  </div>
+</header>
+
+<div class="coach"><b id="coachN">① LOAD</b><span id="coachT"></span><span class="meta" id="projMeta">untitled · autosaved</span></div>
+
+<aside class="left">
+  <section class="zone z-media" id="mediaPanel"></section>
+  <section class="zone z-signals" style="flex:1">
+    <h3>Signals <div class="srcsel" id="srcsel"></div></h3>
+    <div class="chips" id="chips"></div>
+    <p class="tip">Drag a chip onto any knob to map it. <kbd>Shift</kbd>-drag a knob to set how far the audio pushes it. The selector above picks which stem the chips listen to.</p>
+  </section>
+</aside>
+
+<main class="zone z-view">
+  <div class="vbar">
+    <select id="format" title="Output format"></select>
+    <div class="seg" id="vres" title="Preview resolution"><button data-s="1">FULL</button><button data-s="0.5">½</button><button data-s="0.25">¼</button></div>
+    <button class="gen" id="bAB" title="Before / after split">A | B</button>
+    <button class="gen" id="bLook" title="Look around inside the 360° sphere (drag to look, scroll to zoom). Preview only: renders stay equirectangular." style="display:none">◎ LOOK</button>
+    <span class="spacer"></span>
+    <span class="vinfo" id="vinfo"></span>
+    <button class="ibtn" id="bFull" title="Fullscreen output (F)">⛶</button>
+  </div>
+  <div id="stage">
+    <div class="screen" id="screen" data-proj="flat">
+      <canvas id="view"></canvas>
+      <svg class="grat eq" viewBox="0 0 200 100" preserveAspectRatio="none"><g stroke="rgba(61,224,255,.35)" stroke-width=".25" fill="none" vector-effect="non-scaling-stroke">
+        <path d="M0 25H200M0 50H200M0 75H200" vector-effect="non-scaling-stroke"/><path d="M50 0V100M100 0V100M150 0V100" stroke-dasharray="1 1" vector-effect="non-scaling-stroke"/>
+        <path d="M0 0V100M200 0V100" stroke="rgba(255,122,61,.8)" stroke-width="2" vector-effect="non-scaling-stroke"/></g></svg>
+      <svg class="grat dm" viewBox="0 0 100 100"><g stroke="rgba(61,224,255,.3)" stroke-width=".25" fill="none"><circle cx="50" cy="50" r="16.6"/><circle cx="50" cy="50" r="33.3"/><path d="M50 0V100M0 50H100"/></g></svg>
+      <div class="abline" id="abline"><span>SOURCE</span><em>OUTPUT</em><i id="abHandle"></i></div>
+      <div class="recbadge">● REC</div>
+      <div class="glerr" id="glerr"></div>
+    </div>
+  </div>
+  <div class="readout">
+    <span class="scenepill"><i id="scDot"></i><b id="scName">—</b></span>
+    <span>KICK <b id="roKick">0.00</b></span><span>BRIGHT <b id="roBright">0.00</b></span><span>NOTE <b id="roNote">—</b></span>
+    <span>ONSETS <b id="roOn">0</b></span><span style="margin-left:auto;color:var(--accent)" id="aiStatus"></span><span>RENDER <b id="roMs">0.0</b> ms</span><span>FPS <b id="roFps">0</b></span>
+  </div>
+</main>
+
+<aside class="right">
+  <section class="zone z-scenes">
+    <h3>Scenes <div class="toggle" id="followT" title="When on, the stack follows the scene cues on the timeline"><i></i>FOLLOW CUES</div></h3>
+    <div class="scenes" id="scenes"></div>
+  </section>
+  <section class="zone z-stack">
+    <h3>Effect stack <span style="color:var(--dimmer);letter-spacing:.1em">TOP → BOTTOM</span></h3>
+    <div class="stack" id="stack"></div>
+    <button class="addfx" id="addfx">＋ Add effect</button>
+  </section>
+  <section class="zone z-insp" id="insp"></section>
+  <section class="zone z-shape">
+    <h3>Response <span style="color:var(--dimmer);letter-spacing:.1em">HOW THE SOUND MOVES IT</span></h3>
+    <div id="shapeBody"></div>
+  </section>
+</aside>
+
+<section class="zone z-time">
+  <div class="tl-bar">
+    <h3>Timeline</h3>
+    <div class="seg" id="tlZoom"><button data-z="fit" class="on">FIT</button><button data-z="16" title="Show 16 bars, following the playhead">16 BARS</button><button data-z="4" title="Show 4 bars">4</button></div>
+    <div class="seg" id="tlSnap"><button data-s="beat" class="on" title="Automation points and markers snap to beats">SNAP</button><button data-s="free">FREE</button></div>
+    <div class="grp" title="Beat grid. Detected automatically; correct it here if the bars look wrong.">BPM <input type="number" id="bpmIn" step="0.1" min="40" max="240"><button class="gen" id="bpmHalf">½</button><button class="gen" id="bpmDbl">×2</button><button class="gen" id="bDown" title="Make the playhead position beat 1 of a bar">1 = here</button><button class="gen" id="bGridReset" title="Use detected grid">Auto</button></div>
+    <div class="grp"><button class="gen" id="bAddLane">+ Lane</button><button class="gen" id="bAddAuto" title="Add an automation lane for the last knob you touched">+ Auto</button><button class="gen" id="bAddMarker">+ Marker</button></div>
+  </div>
+  <div class="tl-body">
+    <div class="tl-labels" id="tlLabels"></div>
+    <div class="tl-lanes" id="lanes"><canvas id="tlc"></canvas><div id="tlPlay"></div><div class="tl-empty" id="tlEmpty"></div></div>
+  </div>
+</section>
+
+<div class="modal" id="libModal"><div class="sheet">
+  <div class="sheet-head"><h2>Effect library</h2><input class="search" id="libSearch" placeholder="search  e.g. trails, crt, glitch…"><span class="vinfo" id="libCount"></span><button class="x" data-close>✕</button></div>
+  <div class="lib"><div class="cats" id="cats"></div><div class="grid" id="libGrid"></div></div>
+</div></div>
+
+<div class="modal" id="expModal"><div class="sheet"><div class="sheet-head"><h2>Export</h2><span class="vinfo" id="expInfo"></span><button class="x" data-close>✕</button></div><div class="exp" id="expBody"></div><div class="sheet-foot" id="expFoot"></div></div></div>
+
+<div class="modal" id="lyrModal"><div class="sheet"><div class="sheet-head"><h2>Lyrics</h2><span class="vinfo" id="lyrInfo"></span><button class="x" data-close>✕</button></div>
+  <div class="exp" style="grid-template-columns:1.4fr 1fr">
+    <div><h4>WORDS · ONE PER LINE: "SECONDS  WORD"</h4><textarea id="lyrText" spellcheck="false" style="width:100%;height:100%;min-height:340px;background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:10px;font:500 12px var(--mono);resize:none"></textarea></div>
+    <div><h4>TRANSCRIBE WITH WHISPER</h4>
+      <div class="opt"><p>Runs OpenAI's Whisper speech recognition <b>in your browser</b> (nothing is uploaded) and times every word. It uses the vocal stem if you've loaded one, which is much more accurate on songs. The model downloads once (~80–150 MB).</p>
+        <div class="row2"><select id="lyrModel"><option value="onnx-community/whisper-base_timestamped">Base (better, multilingual)</option><option value="onnx-community/whisper-tiny.en_timestamped">Tiny English (faster)</option></select></div>
+        <div class="row2"><button class="btn primary sm" id="lyrRun">Transcribe</button><span class="vinfo" id="lyrStatus"></span></div></div>
+      <div class="opt"><p>Or type or paste lyrics by hand: one line per phrase, starting with its time in seconds. Words in a line are spread across it. Tip: play the track and press <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> in the editor to drop in the current time.</p></div>
+    </div>
+  </div>
+  <div class="sheet-foot"><span>Kinetic Lyrics shows these words.</span><button class="btn" id="lyrClear">Clear</button><button class="btn primary" id="lyrApply">Apply</button></div>
+</div></div>
+<div class="modal" id="helpModal"><div class="sheet"><div class="sheet-head"><h2>How ARAV works</h2><button class="x" data-close>✕</button></div><div class="helpgrid" id="helpBody"></div></div></div>
+
+<div id="renderBox"><div class="rb"><h2>Rendering MP4</h2><p class="vinfo" id="rbInfo">preparing…</p><div class="prog"><u id="rbBar"></u></div><p class="vinfo" id="rbEta"></p><button class="btn" id="rbCancel">Cancel</button></div></div>
+<div id="ctx"></div>
+<input type="file" id="fileAny" multiple accept="audio/*,video/*,image/*,.wav,.mp3,.flac,.m4a,.ogg,.aif,.aiff,.mp4,.mov,.webm,.png,.jpg,.jpeg,.gif,.webp" hidden>
+<input type="file" id="fileStem" multiple accept="audio/*" hidden>
+<input type="file" id="fileProj" accept=".json,.arav,application/json" hidden>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
