@@ -7,7 +7,7 @@ import { curveExp, shape, responseCurve, signalArray, baseValue } from '../mod.j
 import { $, $$, clamp, esc, toast } from '../util.js';
 import { menu } from './modals.js';
 import { addAutomation, snapT } from './timeline.js';
-import { writeThrough, activeScene } from '../scenes.js';
+import { takeManual, activeScene } from '../scenes.js';
 
 const A0 = -0.75 * Math.PI, A1 = 0.75 * Math.PI, ang = v => A0 + (A1 - A0) * clamp(v);
 function arc(r, a0, a1) {
@@ -36,7 +36,7 @@ export function renderInspector() {
       <optgroup label="Media">${media.el ? `<option value="media" ${S.source.kind !== 'gen' ? 'selected' : ''}>${esc(media.name)}</option>` : ''}<option value="open">Open video / image…</option><option value="webcam">Webcam</option></optgroup></select>
       ${S.source.kind === 'webcam' ? `<div class="toggle ${S.source.mirror ? 'on' : ''}" id="mirrorT"><i></i>MIRROR</div>` : ''}</div>`;
   }
-  el.innerHTML = `<h3>Inspector <span><span class="editing" id="scBadge" style="display:none" title="Scenes are following cues: knob edits are saved into this scene"></span> <span style="color:${CATC[cat]}">${cat}</span></span></h3>
+  el.innerHTML = `<h3>Inspector <span><span class="editing" id="scBadge" style="display:none" title="The cues are playing this scene. Touching a control takes manual control: FOLLOW CUES pauses and the scene itself is left unchanged."></span> <span style="color:${CATC[cat]}">${cat}</span></span></h3>
     <div class="insp-head"><b>${esc(fxName(id))}</b>${isSrc ? '' : `<span style="margin-left:auto" class="vinfo">MIX</span><input type="range" id="mix" min="0" max="1" step=".01" value="${f.mix}" style="width:90px">`}</div>
     <p class="insp-desc">${esc(desc)}</p>${head}${extras(f)}
     <div class="knobs" id="knobs">${defs.map(p => {
@@ -51,7 +51,7 @@ export function renderInspector() {
         ${auto ? '<span class="atag">AUTO</span>' : ''}<span class="mtag" style="background:${ms[0] ? SIG[ms[0].sig].c : 'transparent'}">${ms.map(m => SIG[m.sig].n).join('+')}</span></div>`;
     }).join('')}</div>
     <div class="maplist" id="maplist"></div>`;
-  if (!isSrc) { const mx = $('#mix'); mx.oninput = () => { f.mix = +mx.value; writeThrough(id, '__mix', f.mix); touch('mix'); }; mx.onchange = () => commit('mix'); }
+  if (!isSrc) { const mx = $('#mix'); mx.oninput = () => { takeManual(); f.mix = +mx.value; touch('mix'); }; mx.onchange = () => commit('mix'); }
   $$('#insp [data-act]').forEach(b => b.onclick = () => hooks.onAction(b.dataset.act, id));
   const sp = $('#srcPick'); if (sp) sp.onchange = () => { const v = sp.value; hooks.onSourcePick(v); };
   const mt = $('#mirrorT'); if (mt) mt.onclick = () => { S.source.mirror = !S.source.mirror; commit('source'); };
@@ -88,19 +88,19 @@ export function renderInspector() {
           const keys = S.auto[akey], t = RT.t; let kk = keys.find(q => Math.abs(q[0] - t) < 0.15);
           if (!kk) { kk = [clamp(snapT(t), 0, duration()), baseValue(id, k, t)]; keys.push(kk); keys.sort((a, b) => a[0] - b[0]); }
           kk[1] = clamp(kk[1] + d);
-        } else { store[k] = clamp(baseValue(id, k, RT.t) + d); writeThrough(id, k, store[k]); }
+        } else { takeManual(); store[k] = clamp(baseValue(id, k, RT.t) + d); }
         touch('knob');
       };
       const up = () => { kel.removeEventListener('pointermove', mv); kel.removeEventListener('pointerup', up); if (moved) commit('knob'); };
       kel.addEventListener('pointermove', mv); kel.addEventListener('pointerup', up);
     });
-    kel.addEventListener('dblclick', () => { if (S.auto[autoKey(id, k)]) return; store[k] = def.v; writeThrough(id, k, def.v); commit('knob'); });
+    kel.addEventListener('dblclick', () => { if (S.auto[autoKey(id, k)]) return; takeManual(); store[k] = def.v; commit('knob'); });
     kel.addEventListener('contextmenu', e => {
       e.preventDefault(); RT.sel.param = { fx: id, k };
       const ms = mapsFor(id, k), akey = autoKey(id, k);
       menu(kel, [
         S.auto[akey] ? { label: 'Remove automation', fn: () => { delete S.auto[akey]; commit('auto'); } } : { label: 'Automate on timeline', fn: () => addAutomation(id, k) },
-        { label: 'Reset to default', fn: () => { store[k] = def.v; writeThrough(id, k, def.v); commit('knob'); } },
+        { label: 'Reset to default', fn: () => { takeManual(); store[k] = def.v; commit('knob'); } },
         ...(ms.length ? ['-', ...ms.map(m => ({ label: `Unmap ${SIG[m.sig].n}${m.src !== 'mix' ? ' · ' + m.src : ''}`, fn: () => removeMap(m.id) }))] : []),
         '-', ...SIGS.slice(0, 8).map(s => ({ label: `Map ${s.n}`, fn: () => { const m = newMap(id, k, s.id, { src: RT.chipSrc || 'mix', depth: 0.4, mode: s.k === 'TRIG' ? 'trig' : 'cont' }); S.maps.push(m); RT.sel.map = m.id; commit('maps'); } })),
       ], { x: e.clientX, y: e.clientY });
@@ -130,7 +130,7 @@ let badgeFor = undefined;
 export function updateSceneBadge(force) {
   const sc = activeScene(RT.t), b = $('#scBadge'); if (!b) return;
   const id = sc ? sc.id : null; if (id === badgeFor && !force && b.dataset.done) return; badgeFor = id; b.dataset.done = 1;
-  b.style.display = sc ? '' : 'none'; if (sc) { b.style.background = sc.c; b.textContent = '✎ ' + sc.name; }
+  b.style.display = sc ? '' : 'none'; if (sc) { b.style.background = sc.c; b.textContent = '▶ ' + sc.name; }
 }
 export function updateKnobs() {
   const id = RT.sel.fx, live = RT.vals[id]; if (!live) return;

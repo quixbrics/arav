@@ -2,7 +2,7 @@
 // cues on the timeline. While FOLLOW is on, the stack crossfades from scene to
 // scene as the playhead passes each cue. Editing a knob while a scene is
 // playing writes the change into that scene, so edits stick.
-import { S, RT, SRC_UID, fxItem, paramStore, grid } from './state.js';
+import { S, RT, SRC_UID, paramStore, grid } from './state.js';
 import { clamp, uid } from './util.js';
 
 export const SCENE_COLS = ['#ff7a3d', '#3de0ff', '#b98cff', '#7dffa8', '#ff3d71', '#ffe14d', '#5d8bff', '#4dffd2', '#ff6bd6', '#d9dce1'];
@@ -20,7 +20,8 @@ export function capture(name) {
 export function updateScene(id) { const sc = S.scenes.find(s => s.id === id); if (sc) sc.state = snapshot(); }
 export function recall(id) {
   const sc = S.scenes.find(s => s.id === id); if (!sc) return;
-  for (const f of S.stack) { const st = sc.state.fx[f.uid]; if (st) { f.on = st.on; f.mix = st.mix; Object.assign(f.params, st.params); } }
+  // an effect that isn't in the snapshot didn't exist when it was captured, so it's off in this scene
+  for (const f of S.stack) { const st = sc.state.fx[f.uid]; if (st) { f.on = st.on; f.mix = st.mix; Object.assign(f.params, st.params); } else f.on = false; }
   Object.assign(S.source.params, sc.state.src || {});
 }
 export function deleteScene(id) { S.scenes = S.scenes.filter(s => s.id !== id); S.cues = S.cues.filter(c => c.scene !== id); }
@@ -58,21 +59,32 @@ export function sceneValue(id, k, t) {
 export function sceneOnMix(f, t) {
   const b = sceneBlend(t); if (!b) return { on: f.on, mix: f.mix };
   const st = sc => sc && sc.state.fx[f.uid];
-  const sb = st(b.B); if (!sb) return { on: f.on, mix: f.mix };
-  const mb = sb.on ? sb.mix : 0;
-  if (!b.A) return { on: sb.on, mix: sb.mix };
-  const sa = st(b.A), ma = sa ? (sa.on ? sa.mix : 0) : (f.on ? f.mix : 0);
+  // effects missing from a scene are off in it (they were added after it was captured)
+  const sb = st(b.B), mb = sb && sb.on ? sb.mix : 0;
+  if (!b.A) return sb ? { on: sb.on, mix: sb.mix } : { on: false, mix: f.mix };
+  const sa = st(b.A), ma = sa && sa.on ? sa.mix : 0;
   const mix = ma + (mb - ma) * b.u;
   return { on: mix > 0.001, mix };
 }
-// the scene currently playing (after any fade), for write-through edits
+// the scene currently playing (after any fade)
 export function activeScene(t) { const b = sceneBlend(t); return b ? b.B : null; }
-export function writeThrough(id, k, v) {
-  const sc = activeScene(RT.t); if (!sc) return;
-  if (id === SRC_UID) { sc.state.src = sc.state.src || {}; sc.state.src[k] = v; return; }
-  const f = fxItem(id); if (!f) return;
-  const st = sc.state.fx[id] || (sc.state.fx[id] = { on: f.on, mix: f.mix, params: { ...f.params } });
-  if (k === '__on') st.on = v; else if (k === '__mix') st.mix = v; else st.params[k] = v;
-  invalidateBlend();
+
+// Copy what the cues are showing right now into the stack itself.
+export function bakeLive(t) {
+  if (!following()) return;
+  for (const f of S.stack) {
+    const om = sceneOnMix(f, t); f.on = om.on; if (om.on) f.mix = om.mix;
+    for (const k of Object.keys(f.params)) { const v = sceneValue(f.uid, k, t); if (v !== undefined) f.params[k] = v; }
+  }
+  for (const k of Object.keys(S.source.params)) { const v = sceneValue(SRC_UID, k, t); if (v !== undefined) S.source.params[k] = v; }
+}
+// Call before any edit to the stack. If cues are playing, freeze the live look
+// into the stack and pause FOLLOW so the edit changes the stack, not a scene.
+export const manual = { onTake: null };
+export function takeManual() {
+  if (!following()) return false;
+  bakeLive(RT.t); S.scenesOn = false; invalidateBlend();
+  if (manual.onTake) manual.onTake();
+  return true;
 }
 export { paramStore };

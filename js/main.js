@@ -10,7 +10,7 @@ import { $, $$, on, clamp, uid, toast, esc, fmtTime, countLE, sampleAt } from '.
 import { renderMedia, renderChips, updateChips, renderStack, setActions, renderScenes, updateLiveScene, updateStackLive } from './ui/panels.js';
 import { renderInspector, renderShape, syncShape, updateKnobs, drawShapePlots, hooks, updateSceneBadge } from './ui/inspector.js';
 import { initTimeline, drawTimeline, updatePlayhead, setZoom, TL, sectionName, sectionColor, snapT } from './ui/timeline.js';
-import { capture, recall, updateScene, deleteScene, addCue, following, sceneOnMix, activeScene, writeThrough, invalidateBlend, SCENE_COLS } from './scenes.js';
+import { capture, recall, updateScene, deleteScene, addCue, following, sceneOnMix, activeScene, takeManual, manual, bakeLive, invalidateBlend, SCENE_COLS } from './scenes.js';
 import { applyRecipe, saveUserRecipe } from './presets.js';
 import { openLibrary, openExport, openHelp, closeModals, menu } from './ui/modals.js';
 import { startRecorder, saveStill, exportData, exportMarkers, saveProjectFile } from './export.js';
@@ -218,6 +218,7 @@ function removeStem(key) {
 
 // ---------------- stack actions ----------------
 function addFx(type) {
+  takeManual();
   const f = newFx(type), i = S.stack.findIndex(x => x.uid === RT.sel.fx);
   S.stack.splice(i >= 0 ? i + 1 : S.stack.length, 0, f);
   RT.sel.fx = f.uid; RT.sel.map = null; RT.sel.param = null;
@@ -233,6 +234,7 @@ function removeFx(id) {
   commit('stack');
 }
 function duplicateFx(id) {
+  takeManual();
   const f = fxItem(id), c = JSON.parse(JSON.stringify(f)); c.uid = uid();
   S.stack.splice(S.stack.indexOf(f) + 1, 0, c);
   S.maps.filter(m => m.fx === id).forEach(m => S.maps.push({ ...m, id: uid(), fx: c.uid }));
@@ -241,10 +243,12 @@ function duplicateFx(id) {
 // ---------------- scenes ----------------
 function toggleFx(id) {
   const f = fxItem(id); if (!f) return;
-  const now = following() ? sceneOnMix(f, RT.t).on : f.on;
-  f.on = !now; writeThrough(id, '__on', f.on); commit('stack');
+  takeManual(); f.on = !f.on; commit('stack');
 }
+manual.onTake = () => { $('#followT').classList.remove('on'); toast('Manual control: <b>FOLLOW CUES</b> is paused so your edit changes the stack, not a scene. Capture or right-click → Update to keep this look, then switch FOLLOW CUES back on.', 5500); };
 function captureScene() {
+  // capture what's on screen: if cues are playing, that's the scene blend, not the raw knobs
+  if (following()) { bakeLive(RT.t); invalidateBlend(); }
   const sc = capture(); commit('scenes');
   toast(`Captured <b>${esc(sc.name)}</b>. Change the stack and capture more, then cue them on the timeline (right-click a section).`, 4000);
 }
@@ -277,8 +281,13 @@ function toggleFollow() {
   commit('scenes');
 }
 const recipeActs = {
-  load: r => { applyRecipe(r, 'load'); engine.clearHistory(); RT.sel.fx = S.stack[0]?.uid; RT.sel.map = null; commit('all'); toast(`Loaded recipe <b>${esc(r.name)}</b>. Undo with ⌘/Ctrl+Z.`); },
-  append: r => { const first = applyRecipe(r, 'append'); RT.sel.fx = first; RT.sel.map = null; commit('all'); toast(`Appended <b>${esc(r.name)}</b> (switched off). Turn its effects on in a scene.`); },
+  load: r => {
+    // scenes are snapshots of the old stack's effects, so they can't apply to the new one
+    const hadScenes = S.scenes.length; S.scenes = []; S.cues = [];
+    applyRecipe(r, 'load'); engine.clearHistory(); RT.sel.fx = S.stack[0]?.uid; RT.sel.map = null; commit('all');
+    toast(`Loaded recipe <b>${esc(r.name)}</b>${hadScenes ? '. Your scenes and cues were cleared, because they belonged to the old stack' : ''}. Undo with ⌘/Ctrl+Z.`, hadScenes ? 5000 : 3000);
+  },
+  append: r => { takeManual(); const first = applyRecipe(r, 'append'); RT.sel.fx = first; RT.sel.map = null; commit('all'); toast(`Appended <b>${esc(r.name)}</b> (switched off). Turn its effects on in a scene.`); },
   save: n => { saveUserRecipe(n); toast(`Saved recipe <b>${esc(n)}</b> in this browser.`); },
 };
 
