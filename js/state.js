@@ -26,20 +26,25 @@ export function newMap(fx, p, sig, o = {}) {
 }
 
 function defaultProject() {
-  const fb = newFx('feedback'), blk = newFx('block'), chr = newFx('chromatic'), crt = newFx('crt'), ph = newFx('playhead'), cam = newFx('handycam'), wav = newFx('wave');
-  ph.on = false; cam.on = false; wav.on = false;
-  blk.params.amount = 0;
+  const fx = (type, params) => { const f = newFx(type); Object.assign(f.params, params); return f; };
+  const chr = fx('chromatic', { amount: 0.08, angle: 0, radial: 0.8, jitter: 0 });
+  const con = fx('contours', { levels: 0.6016, width: 0.1781, source: 0.2802, march: 0.724, fill: 0.0018, hue: 0.5, colour: 1, bg: 0, smooth: 0.5 });
+  const fb = fx('feedback', { decay: 0.8958, zoom: 0.5457, rotate: 0.4147, hue: 0.5602, shiftx: 0.5, shifty: 0.5, key: 0 });
+  const ps = fx('pixelsort', { lo: 0.2434, hi: 0.6199, steps: 0.8624, vertical: 0.3555, reverse: 0, persist: 0.9044, keyhue: 0 });
+  const crt = fx('crt', { scan: 0.6, lines: 0.35, mask: 0.4, curve: 0, bloom: 0.25, flicker: 0.2, vignette: 0 });
+  const ech = fx('echo', { delay: 0.6015, count: 0.8204, decay: 0.9386, mode: 0.2943, zoom: 0.5375, drift: 0.5, hue: 0.3 });
+  const asc = fx('ascii', { cell: 0.7827, set: 0.5846, contrast: 0.355, colour: 0.0854, hue: 0.6064, bg: 0.845, invert: 0 });
+  const mot = fx('motion', { sens: 0.4598, hold: 0.9445, boxes: 0.4274, minsize: 0.1632, smooth: 0.7873, lock: 0.1576, labels: 0, links: 0.85, pad: 0.1826, jitter: 0, text: 0.7617, frame: 0.7192, hue: 0.38, mono: 0 });
   const S = {
     v: 1, name: 'untitled',
     format: 'hd', preview: 0.5, fps: 30,
-    source: { kind: 'gen', gen: 'testcard', params: Object.fromEntries(SRC_PARAMS.gen.map(p => [p.k, p.v])), mirror: false },
-    stack: [fb, blk, chr, wav, ph, cam, crt],
+    source: { kind: 'gen', gen: 'noise', params: { ...Object.fromEntries(SRC_PARAMS.gen.map(p => [p.k, p.v])), scale: 0.5159, speed: 0.6601, hue: 0, detail: 0.8528, pulse: 0.2441 }, mirror: true },
+    stack: [chr, con, fb, ps, crt, ech, asc, mot],
     maps: [
-      newMap(fb.uid, 'decay', 'loud', { depth: 0.35, rel: 0.5 }),
-      newMap(blk.uid, 'amount', 'onset', { depth: 0.45, mode: 'trig', rel: 0.18 }),
-      newMap(chr.uid, 'amount', 'kick', { depth: 0.5, curve: 0.65, rel: 0.12 }),
-      newMap(crt.uid, 'bloom', 'kick', { depth: 0.4, rel: 0.15 }),
-      newMap(SRC_UID, 'pulse', 'kick', { depth: 0.8, rel: 0.15 }),
+      newMap(crt.uid, 'bloom', 'kick', { depth: 0.6, rel: 0.12 }),
+      newMap(crt.uid, 'flicker', 'high', { depth: 0.5, rel: 0.05 }),
+      newMap(fb.uid, 'zoom', 'onset', { depth: 0.4, mode: 'trig', rel: 0.25 }),
+      newMap(con.uid, 'fill', 'bright', { depth: 0.61, rel: 0.25 }),
     ],
     auto: {},                // "uid:param" -> [[t, v], ...]
     lanes: [{ sig: 'kick', src: 'mix' }, { sig: 'bright', src: 'mix' }, { sig: 'onset', src: 'mix' }],
