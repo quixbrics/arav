@@ -30,6 +30,7 @@ import ascii from './ascii.js';
 import dither from './dither.js';
 import contours from './contours.js';
 import gradmap from './gradmap.js';
+import grade from './grade.js';
 import kaleido from './kaleido.js';
 import fluid from './fluid.js';
 import rd from './rd.js';
@@ -39,11 +40,11 @@ import personmask from './personmask.js';
 import lyrics from './lyrics.js';
 import ambi from './ambi.js';
 
-export const EFFECTS = Object.fromEntries([chromatic, block, wave, grid, colscan, pixelsort, dct, feedback, lumatrails, echo, crt, vhs, film, handycam, playhead, scope, spectro, pointcloud, ridges, plexus, blobs, motion, slitscan, beatrepeat, timeremap, ascii, dither, contours, gradmap, kaleido, fluid, rd, datamosh, depthfx, personmask, lyrics, ambi].map(e => [e.type, e]));
+export const EFFECTS = Object.fromEntries([chromatic, block, wave, grid, colscan, pixelsort, dct, feedback, lumatrails, echo, crt, vhs, film, handycam, playhead, scope, spectro, pointcloud, ridges, plexus, blobs, motion, slitscan, beatrepeat, timeremap, ascii, dither, contours, gradmap, grade, kaleido, fluid, rd, datamosh, depthfx, personmask, lyrics, ambi].map(e => [e.type, e]));
 
 export const CATC = {
   SOURCE: '#8a93a3', GLITCH: '#ff3d71', TRAILS: '#b98cff', VINTAGE: '#ffb23d', SPATIAL: '#3de0ff', TRACK: '#7dffa8',
-  TIME: '#5d8bff', PLAYHEAD: '#ffe14d', STYLISE: '#ff7a3d', SIM: '#4dffd2', ML: '#ff6bd6', OUTPUT: '#ffffff',
+  TIME: '#5d8bff', PLAYHEAD: '#ffe14d', COLOUR: '#c8ff3d', STYLISE: '#ff7a3d', SIM: '#4dffd2', ML: '#ff6bd6', OUTPUT: '#ffffff',
 };
 
 // Library catalogue. `type` = available now; `phase` = on the roadmap.
@@ -74,6 +75,7 @@ export const LIB = [
   ['PLAYHEAD', 'Scan Playhead', 'Sweeping line synced to bars; glows, displaces, trails.', { type: 'playhead' }],
   ['PLAYHEAD', 'Oscilloscope', 'Live waveform drawn over the frame.', { type: 'scope' }],
   ['PLAYHEAD', 'Spectro Scroll', 'The spectrogram as a moving texture.', { type: 'spectro' }],
+  ['COLOUR', 'Colour Grade', 'Exposure, white balance, lift / gamma / gain, contrast, hue, saturation, vibrance.', { type: 'grade' }],
   ['STYLISE', 'ASCII', 'Glyph rendering; density follows level.', { type: 'ascii' }],
   ['STYLISE', 'Dither', 'Bayer, noise or halftone dots with retro palettes.', { type: 'dither' }],
   ['STYLISE', 'Contours', 'Topographic isolines from brightness or depth.', { type: 'contours' }],
